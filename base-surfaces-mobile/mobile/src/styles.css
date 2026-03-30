@@ -1968,6 +1968,13 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
   html.standalone .fs-sheet__backdrop {
     top: -60px;
   }
+  /* Fix flow continue buttons going under iPhone bezel */
+  html.standalone .add-money-flow__continue,
+  html.standalone .send-flow__continue,
+  html.standalone .request-flow__continue,
+  html.standalone .convert-flow__continue {
+    bottom: 30px;
+  }
   html.standalone * {
     -webkit-user-select: none;
     user-select: none;
@@ -4220,7 +4227,7 @@ html[class*="dark"] .more-menu__dropdown {
 
 .add-money-flow__continue {
   position: absolute;
-  bottom: 10px;
+  bottom: 24px;
   left: 0;
   right: 0;
   padding: 16px;
@@ -5159,7 +5166,7 @@ html[class*="dark"] .more-menu__dropdown {
 
 .send-flow__continue {
   position: absolute;
-  bottom: 10px;
+  bottom: 24px;
   left: 0;
   right: 0;
   padding: 16px;
@@ -5449,7 +5456,7 @@ html[class*="dark"] .more-menu__dropdown {
 
 .request-flow__continue {
   position: absolute;
-  bottom: 10px;
+  bottom: 24px;
   left: 0;
   right: 0;
   padding: 16px;

@@ -86,11 +86,28 @@ function StatusBar({ device }: { device: DeviceConfig }) {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
+    // Listen for postMessage from iframe
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'theme-change') setDark(e.data.dark);
     };
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+
+    // Also check iframe directly (for Make environment where postMessage may not work)
+    const checkIframeDark = () => {
+      const iframe = document.querySelector('.df-device-screen iframe') as HTMLIFrameElement;
+      if (iframe?.contentDocument) {
+        const isDark = iframe.contentDocument.documentElement.classList.contains('dark');
+        setDark(isDark);
+      }
+    };
+
+    checkIframeDark();
+    const interval = setInterval(checkIframeDark, 500);
+
+    return () => {
+      window.removeEventListener('message', handler);
+      clearInterval(interval);
+    };
   }, []);
 
   const variantClass = device.hasNotch ? ' df-status-bar--notch' : '';
