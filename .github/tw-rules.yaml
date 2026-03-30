@@ -1,4 +1,7 @@
 runChecks: true
+allowedCostCenters:
+  - DESIGN
+  - ENGINEERING
 actions:
   branch-protection-settings:
     branches:
