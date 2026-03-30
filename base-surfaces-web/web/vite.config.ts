@@ -9,6 +9,9 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../../shared-resources'),
     },
   },
+  optimizeDeps: {
+    include: ['three', '@react-three/fiber', '@react-three/drei'],
+  },
   server: {
     port: 3002,
     proxy: {
