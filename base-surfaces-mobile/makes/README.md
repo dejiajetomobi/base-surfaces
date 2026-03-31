@@ -10,7 +10,16 @@ Figma Make builds of the Base Surfaces Mobile prototype. Open `.make` files in [
 
 | Version | Date | Download |
 |---------|------|----------|
+| V1.01 | 2026-03-31 | [Mobile V1.01.make](Mobile%20V1.01.make) |
 | V1.0 | 2026-03-30 | [Mobile V1.0.make](Mobile%20V1.0.make) |
+
+<details>
+<summary><strong>V1.01</strong> — Fix flow buttons hidden in Make</summary>
+
+• Fixed continue/review buttons hidden under fold on all flows (Send, Convert, Add Money, Request, Payment Link)
+• Fixed select tool blocking from account-switch-overlay
+
+</details>
 
 <details>
 <summary><strong>V1.0</strong> — Initial build with bug fixes</summary>
