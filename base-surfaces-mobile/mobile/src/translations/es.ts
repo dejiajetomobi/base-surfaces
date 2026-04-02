@@ -8,7 +8,6 @@ const es: Translations = {
   'nav.payments': 'Pagos',
   'nav.recipients': 'Destinatarios',
   'nav.insights': 'Resumen',
-  'nav.team': 'Equipo',
   'nav.scheduled': 'Programadas',
   'nav.directDebits': 'Domiciliaciones',
   'nav.recurringCardPayments': 'Pagos recurrentes con tarjeta',

@@ -91,6 +91,7 @@ There are 3 account types: **Current Account**, **Jar**, and **Group/Shared**. E
 - `src/translations/es.ts` — Spanish strings, typed as `Translations`
 - **Translate**: UI chrome (labels, buttons, headers, descriptions, modals)
 - **Don't translate**: names, currency codes, amounts, brand terms ("Wise"), Claude prompt strings
+- **Writing guidelines**: When writing or reviewing any UI copy, follow the Wise content guidelines in `shared-resources/content/` — see `writing-guidelines.md` for the master reference
 
 ## Illustrations & Flags (`@wise/art`)
 
@@ -166,16 +167,34 @@ Account logic docs in `shared-resources/account-logic/` — platform-agnostic bu
 | `interest-stocks.md` | Interest/stocks feature flag system (hasInterest, hasStocks, interestRate, totalReturns) |
 | `routing.md` | Full URL reference, ID system (group IDs + balance IDs), and how to add new routes |
 
-Design system docs in `mobile/design-system/` — read these when working on related areas:
+Shared design system docs in `../shared-resources/design-system/` — cross-platform Neptune reference:
 
 | Doc | Contents |
 |-----|----------|
-| `tokens.md` | Neptune color, typography, spacing tokens |
+| `icons.md` | Icon usage, sizes, color contexts, @transferwise/icons reference |
+| `flags-and-art.md` | @wise/art Flag and Illustration usage (CDN-based) |
+| `components.md` | Neptune component inventory and usage patterns (React) |
+
+Content & writing docs in `../shared-resources/content/` — read when writing or reviewing UI copy:
+
+| Doc | Contents |
+|-----|----------|
+| `writing-guidelines.md` | Master guide — tone, grammar, vocabulary, all component rules |
+| `tone-of-voice.md` | Brand principles, context-specific tone, localization |
+| `grammar-and-style.md` | A-Z grammar rules and style reference |
+| `vocabulary.md` | Product terminology, words to use/avoid |
+| `components/*.md` | Writing rules per UI component (buttons, modals, snackbars, inputs, etc.) |
+
+Mobile-specific design system docs in `mobile/design-system/` — read these when working on related areas:
+
+| Doc | Contents |
+|-----|----------|
+| `tokens.md` | Neptune color, typography, spacing tokens (mobile has additional tokens vs web) |
 | `custom-tokens.md` | Prototype-specific extended tokens |
-| `components.md` | Neptune component inventory and usage patterns |
 | `custom-components.md` | Home page components (MCA, JarCard, Carousel, Tasks, etc.) |
 | `custom-components-account.md` | Account & currency page components (header, actions, calculator, etc.) |
 | `custom-components-flows.md` | Flow overlays, i18n, ButtonCue, shimmer system, success screens |
 | `ios-components.md` | iOS-specific components (IOSTopBar, MobileNav, PageTransition, BottomSheet, DeviceFrame, Liquid Glass) |
+| `neptune-css.md` | Neptune CSS utilities (includes MAKE_OVERRIDES for portal stripping) |
 | `page-structure.md` | Mobile layout shell, navigation chrome, CSS custom properties |
 | `src/flows/structure.md` | Flow overlay architecture, ButtonCue pattern, avatar styles, button state machine |

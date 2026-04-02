@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Logo, SnackbarProvider } from '@transferwise/components';
 import { Agentation } from 'agentation';
+import { ScreenGallery, GALLERY_CSS } from './components/ScreenGallery';
 import { LanguageProvider, useLanguage } from './context/Language';
 import { PrototypeNamesProvider, usePrototypeNames } from './context/PrototypeNames';
 import { LiveRatesProvider } from './context/LiveRates';
@@ -63,7 +64,7 @@ type ActiveFlow =
   | { type: 'add-money'; defaultCurrency: string; accountLabel: string; accountStyle: AccountStyle }
   | { type: 'convert'; fromCurrency: string; toCurrency: string; accountLabel: string; toAccountLabel?: string; jar?: 'taxes'; jarId?: string; accountStyle: AccountStyle; toAccountStyle?: AccountStyle }
   | { type: 'send'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; accountStyle: AccountStyle; recipient?: SendRecipient; prefillAmount?: number; prefillReceiveAmount?: number; startStep?: 'recipient' | 'amount'; forcedReceiveCurrency?: string; step?: string }
-  | { type: 'request'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; step?: string }
+  | { type: 'request'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; step?: string; startStep?: 'recipient' | 'request'; recipient?: SendRecipient }
   | { type: 'payment-link'; defaultCurrency: string; accountLabel: string; jar?: 'taxes' }
   | null;
 
@@ -176,22 +177,60 @@ function stateToPath(navItem: string, subPage: SubPage, accountType: AccountType
 
 // ── App ─────────────────────────────────────────────────────────────────────
 
+// Detect gallery iframe mode (loaded by ScreenGallery)
+const isGalleryMode = new URLSearchParams(window.location.search).has('gallery');
+
 function AppInner() {
   const { consumerName, businessName, consumerHomeCurrency, businessHomeCurrency } = usePrototypeNames();
   const { t } = useLanguage();
 
   // Initialise state from the current URL
   const initial = parseUrl(window.location.pathname);
+  const params = new URLSearchParams(window.location.search);
   const [activeNavItem, setActiveNavItem] = useState(initial.navItem);
   const [previousNavItem, setPreviousNavItem] = useState('Home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [subPage, setSubPage] = useState<SubPage>(initial.subPage);
-  const [accountType, setAccountType] = useState<AccountType>('personal');
+  const [accountType, setAccountType] = useState<AccountType>(() => params.get('account') === 'business' ? 'business' : 'personal');
   const [activeFlow, setActiveFlow] = useState<ActiveFlow>(null);
 
-  // Sync URL when state changes (skip when handling popstate)
+  // Auto-open flow when loaded with ?flow= (gallery preview)
+  useEffect(() => {
+    if (!isGalleryMode) return;
+    const flowParam = params.get('flow');
+    if (!flowParam) return;
+    const stepParam = params.get('step');
+    const homeCurrency = accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency;
+    const style: AccountStyle = accountType === 'business'
+      ? { color: '#163300', textColor: '#9fe870', iconName: 'Wise' }
+      : { color: 'var(--color-interactive-accent)', textColor: 'var(--color-interactive-control)', iconName: 'Wise' };
+    switch (flowParam) {
+      case 'send': {
+        const previewRecipient = stepParam === 'amount'
+          ? accountType === 'business'
+            ? { name: 'Acme Corp', subtitle: 'Barclays Bank ending ·· 7821', initials: 'AC', hasFastFlag: false, badgeFlagCode: 'GBP' }
+            : { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+          : undefined;
+        setActiveFlow({ type: 'send', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style, startStep: (stepParam as 'recipient' | 'amount') ?? 'recipient', recipient: previewRecipient });
+        break;
+      }
+      case 'request': {
+        const previewRecipient = stepParam === 'request'
+          ? { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+          : undefined;
+        setActiveFlow({ type: 'request', defaultCurrency: homeCurrency, accountLabel: 'Current account', jar: undefined, step: stepParam ?? 'recipient', startStep: (stepParam as 'recipient' | 'request') ?? 'recipient', recipient: previewRecipient });
+        break;
+      }
+      case 'convert': setActiveFlow({ type: 'convert', fromCurrency: homeCurrency, toCurrency: 'EUR', accountLabel: 'Current account', accountStyle: style }); break;
+      case 'add-money': setActiveFlow({ type: 'add-money', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style }); break;
+      case 'payment-link': setActiveFlow({ type: 'payment-link', defaultCurrency: homeCurrency, accountLabel: 'Current account' }); break;
+    }
+  }, []);
+
+  // Sync URL when state changes (skip when handling popstate, skip in gallery mode)
   const isPopstateRef = useRef(false);
   useEffect(() => {
+    if (isGalleryMode) return;
     if (isPopstateRef.current) { isPopstateRef.current = false; return; }
     const target = activeFlow ? flowToPath(activeFlow) : stateToPath(activeNavItem, subPage, accountType);
     if (!target) return;
@@ -213,6 +252,51 @@ function AppInner() {
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
   }, []);
+
+  // Handle navigate messages from ScreenGallery (works in Make where pushState is neutralised)
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type !== 'navigate' || !e.data.path) return;
+      const url = new URL(e.data.path, window.location.origin);
+      const flowParam = url.searchParams.get('flow');
+      const stepParam = url.searchParams.get('step');
+      const homeCurrency = accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency;
+      const style: AccountStyle = accountType === 'business'
+        ? { color: '#163300', textColor: '#9fe870', iconName: 'Wise' }
+        : { color: 'var(--color-interactive-accent)', textColor: 'var(--color-interactive-control)', iconName: 'Wise' };
+
+      if (flowParam) {
+        switch (flowParam) {
+          case 'send': {
+            const previewRecipient = stepParam === 'amount'
+              ? accountType === 'business'
+                ? { name: 'Acme Corp', subtitle: 'Barclays Bank ending ·· 7821', initials: 'AC', hasFastFlag: false, badgeFlagCode: 'GBP' }
+                : { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+              : undefined;
+            setActiveFlow({ type: 'send', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style, startStep: (stepParam as 'recipient' | 'amount') ?? 'recipient', recipient: previewRecipient });
+            break;
+          }
+          case 'request': {
+            const previewRecipient = stepParam === 'request'
+              ? { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+              : undefined;
+            setActiveFlow({ type: 'request', defaultCurrency: homeCurrency, accountLabel: 'Current account', jar: undefined, step: stepParam ?? 'recipient', startStep: (stepParam as 'recipient' | 'request') ?? 'recipient', recipient: previewRecipient });
+            break;
+          }
+          case 'convert': setActiveFlow({ type: 'convert', fromCurrency: homeCurrency, toCurrency: 'EUR', accountLabel: 'Current account', accountStyle: style }); break;
+          case 'add-money': setActiveFlow({ type: 'add-money', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style }); break;
+          case 'payment-link': setActiveFlow({ type: 'payment-link', defaultCurrency: homeCurrency, accountLabel: 'Current account' }); break;
+        }
+      } else {
+        const state = parseUrl(url.pathname);
+        setActiveNavItem(state.navItem);
+        setSubPage(state.subPage);
+        setActiveFlow(null);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [accountType, businessHomeCurrency, consumerHomeCurrency]);
 
   const activeName = accountType === 'business' ? businessName : consumerName;
   const activeInitials = getInitials(activeName);
@@ -507,6 +591,7 @@ function AppInner() {
     return (
       <SnackbarProvider>
         {import.meta.env.DEV && <Agentation />}
+        <div className="page-layout page-layout--flow">
         {activeFlow.type === 'add-money' && (
           <AddMoneyFlow
             defaultCurrency={activeFlow.defaultCurrency}
@@ -560,6 +645,8 @@ function AppInner() {
             accountType={accountType}
             avatarUrl={avatarUrl}
             initials={activeInitials}
+            startStep={activeFlow.startStep}
+            recipient={activeFlow.recipient}
           />
         )}
         {activeFlow.type === 'payment-link' && (
@@ -574,12 +661,15 @@ function AppInner() {
           />
         )}
         <PrototypeSettings />
+        </div>
+        {!isGalleryMode && <ScreenGallery accountType={accountType} activeFlowType={activeFlow?.type} activeFlowStep={activeFlow && 'step' in activeFlow ? activeFlow.step : undefined} />}
       </SnackbarProvider>
     );
   }
 
   return (
     <SnackbarProvider>
+    {!isGalleryMode && <ScreenGallery accountType={accountType} activeFlowType={activeFlow?.type} activeFlowStep={activeFlow && 'step' in activeFlow ? activeFlow.step : undefined} />}
     <div className="page-layout">
       {import.meta.env.DEV && <Agentation />}
       <div className="column-layout">
@@ -612,6 +702,8 @@ function AppInner() {
 
 function App() {
   return (
+    <>
+    <style dangerouslySetInnerHTML={{ __html: GALLERY_CSS }} />
     <LanguageProvider>
       <PrototypeNamesProvider>
         <LiveRatesProvider>
@@ -621,6 +713,7 @@ function App() {
         </LiveRatesProvider>
       </PrototypeNamesProvider>
     </LanguageProvider>
+    </>
   );
 }
 

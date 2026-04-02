@@ -453,87 +453,14 @@ html.np-theme-dark {
   padding: 20px 0 12px;
 }
 
-/* ===== Prototype FAB ===== */
-
-.prototype-fab {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  z-index: 999;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: #9FE870;
-  color: #163300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  touch-action: none;
-  transition: width 0.15s, height 0.15s, box-shadow 0.15s, opacity 0.2s;
-  user-select: none;
-  padding: 0;
-  line-height: 0;
+/* ===== Z-index fixes: portaled elements above Drawer dimmer ===== */
+/* Neptune SelectInput popover and Snackbar portal to <body> at z-index 1060,
+   same level as the Drawer's Dimmer (1050). Bump both above everything. */
+.np-popover-v2-container {
+  z-index: 99998 !important;
 }
-
-.prototype-fab .tw-icon {
-  transition: transform 0.15s;
-  transform: scale(1.125);
-}
-
-.prototype-fab--dragging .tw-icon {
-  transform: scale(1.25);
-}
-
-.prototype-fab:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.prototype-fab--dragging {
-  cursor: grabbing;
-  width: 44px;
-  height: 44px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-html[class*="dark"] .prototype-fab:hover {
-  box-shadow: none;
-}
-
-html[class*="dark"] .prototype-fab--dragging {
-  box-shadow: none;
-}
-
-.prototype-fab--hiding {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.prototype-fab--hidden {
-  display: none;
-}
-
-.prototype-fab--showing {
-  animation: prototype-fab-roll-in 0.25s ease-out forwards;
-}
-
-@keyframes prototype-fab-roll-in {
-  from {
-    opacity: 0;
-    transform: translateX(80px) rotate(-360deg);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) rotate(0deg);
-  }
-}
-
-
-@media (max-width: 767px) {
-  .prototype-fab {
-    bottom: 88px;
-  }
+.snackbar {
+  z-index: 99999 !important;
 }
 
 /* ===== Total Balance Header ===== */

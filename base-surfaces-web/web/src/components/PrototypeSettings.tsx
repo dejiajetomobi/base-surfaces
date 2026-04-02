@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Drawer, SelectInput, SelectInputOptionContent, SegmentedControl, Field, Input, ListItem, Button, useSnackbar } from '@transferwise/components';
-import { Slider } from '@transferwise/icons';
 
 const PROMPT_NEW_FLOW = `Build a new interactive flow for this Wise app prototype.
 
@@ -289,86 +288,13 @@ export function PrototypeSettings() {
   const { language, setLanguage, t } = useLanguage();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [animClass, setAnimClass] = useState('prototype-fab--hidden');
-  const [isDragging, setIsDragging] = useState(false);
 
-  // Drag state
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [positioned, setPositioned] = useState(false);
-  const dragRef = useRef({
-    offsetX: 0,
-    offsetY: 0,
-    startX: 0,
-    startY: 0,
-    moved: false,
-  });
-  const fabRef = useRef<HTMLButtonElement>(null);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    dragRef.current = {
-      offsetX: e.clientX - rect.left,
-      offsetY: e.clientY - rect.top,
-      startX: e.clientX,
-      startY: e.clientY,
-      moved: false,
-    };
-    setIsDragging(true);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging) return;
-    const d = dragRef.current;
-
-    const dx = e.clientX - d.startX;
-    const dy = e.clientY - d.startY;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      d.moved = true;
-    }
-
-    if (!positioned) setPositioned(true);
-    setPos({
-      x: e.clientX - d.offsetX,
-      y: e.clientY - d.offsetY,
-    });
-  }, [isDragging, positioned]);
-
-  const handlePointerUp = useCallback(() => {
-    const wasDrag = dragRef.current.moved;
-    setIsDragging(false);
-
-    if (!wasDrag) {
-      setDrawerOpen(true);
-    }
-  }, []);
-
-  // Ctrl+H to hide/show
+  // Listen for open-settings event from ScreenGallery
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        setVisible((v) => {
-          if (v) {
-            setAnimClass('prototype-fab--hiding');
-            setTimeout(() => setAnimClass('prototype-fab--hidden'), 200);
-          } else {
-            setPositioned(false);
-            setAnimClass('prototype-fab--showing');
-            setTimeout(() => setAnimClass(''), 400);
-          }
-          return !v;
-        });
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    const handler = () => setDrawerOpen(true);
+    window.addEventListener('open-settings', handler);
+    return () => window.removeEventListener('open-settings', handler);
   }, []);
-
-  const fabStyle: React.CSSProperties = positioned
-    ? { left: pos.x, top: pos.y, bottom: 'auto', right: 'auto' }
-    : {};
 
   const currentValue = isScreenModeDark ? 'dark' : 'light';
   const [accountType, setAccountType] = useState('consumer');
@@ -380,18 +306,6 @@ export function PrototypeSettings() {
 
   return (
     <>
-      <button
-        ref={fabRef}
-        className={`prototype-fab${isDragging ? ' prototype-fab--dragging' : ''}${animClass ? ` ${animClass}` : ''}`}
-        style={fabStyle}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        aria-label={t('settings.title')}
-      >
-        <Slider size={16} />
-      </button>
-
       <Drawer
         open={drawerOpen}
         headerTitle={t('settings.title')}

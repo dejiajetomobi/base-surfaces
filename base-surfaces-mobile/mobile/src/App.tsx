@@ -21,7 +21,6 @@ import { CurrentAccount } from './pages/CurrentAccount';
 import { CurrencyPage } from './pages/CurrencyPage';
 import { AccountDetailsList } from './pages/AccountDetailsList';
 import { AccountDetailsPage } from './pages/AccountDetailsPage';
-import { Team } from './pages/Team';
 import { AddMoneyFlow } from './flows/AddMoneyFlow';
 import { ConvertFlow } from './flows/ConvertFlow';
 import { SendFlow } from './flows/SendFlow';
@@ -64,7 +63,7 @@ type ActiveFlow =
   | { type: 'add-money'; defaultCurrency: string; accountLabel: string; accountStyle: AccountStyle }
   | { type: 'convert'; fromCurrency: string; toCurrency: string; accountLabel: string; toAccountLabel?: string; jar?: 'taxes'; jarId?: string; accountStyle: AccountStyle; toAccountStyle?: AccountStyle }
   | { type: 'send'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; accountStyle: AccountStyle; recipient?: SendRecipient; prefillAmount?: number; prefillReceiveAmount?: number; startStep?: 'recipient' | 'amount'; forcedReceiveCurrency?: string; step?: string; forceClose?: boolean }
-  | { type: 'request'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; step?: string }
+  | { type: 'request'; defaultCurrency: string; accountLabel: string; jar?: 'taxes'; step?: string; startStep?: 'recipient' | 'request'; recipient?: SendRecipient }
   | { type: 'payment-link'; defaultCurrency: string; accountLabel: string; jar?: 'taxes' }
   | null;
 
@@ -146,7 +145,6 @@ function parseUrl(pathname: string): { navItem: string; subPage: SubPage } {
     case '/payments': return { navItem: 'Payments', subPage: null };
     case '/recipients': return { navItem: 'Recipients', subPage: null };
     case '/account-summary': return { navItem: 'Insights', subPage: null };
-    case '/team': return { navItem: 'Team', subPage: null };
     default: return { navItem: 'Home', subPage: null };
   }
 }
@@ -178,7 +176,6 @@ function stateToPath(navItem: string, subPage: SubPage, accountType: AccountType
     case 'Payments': return '/payments';
     case 'Recipients': return '/recipients';
     case 'Insights': return '/account-summary';
-    case 'Team': return '/team';
     default: return '/home';
   }
 }
@@ -194,11 +191,59 @@ function AppInner() {
   const [activeNavItem, setActiveNavItem] = useState(initial.navItem);
   const [previousNavItem, setPreviousNavItem] = useState('Home');
   const [subPage, setSubPage] = useState<SubPage>(initial.subPage);
-  const [accountType, setAccountType] = useState<AccountType>('personal');
+  const [accountType, setAccountTypeRaw] = useState<AccountType>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('account') === 'business' ? 'business' : 'personal';
+  });
+  const setAccountType = (type: AccountType) => {
+    setAccountTypeRaw(type);
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'account-type-change', accountType: type }, '*');
+    }
+  };
+  // Broadcast initial account type to parent
+  useEffect(() => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'account-type-change', accountType }, '*');
+    }
+  }, []);
   const [activeFlow, setActiveFlow] = useState<ActiveFlow>(null);
   const [transitionDirection, setTransitionDirection] = useState<'push' | 'pop' | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [switching, setSwitching] = useState(false);
+
+  // Auto-open a flow when loaded with ?flow= query param (for gallery preview)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flowParam = params.get('flow');
+    if (!flowParam) return;
+    const stepParam = params.get('step');
+    const homeCurrency = accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency;
+    const style: AccountStyle = accountType === 'business'
+      ? { color: '#163300', textColor: '#9fe870', iconName: 'Wise' }
+      : { color: 'var(--color-interactive-accent)', textColor: 'var(--color-interactive-control)', iconName: 'Wise' };
+    switch (flowParam) {
+      case 'send': {
+        const previewRecipient = stepParam === 'amount'
+          ? accountType === 'business'
+            ? { name: 'Acme Corp', subtitle: 'Barclays Bank ending ·· 7821', initials: 'AC', hasFastFlag: false, badgeFlagCode: 'GBP' }
+            : { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+          : undefined;
+        setActiveFlow({ type: 'send', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style, startStep: (stepParam as 'recipient' | 'amount') ?? 'recipient', recipient: previewRecipient });
+        break;
+      }
+      case 'request': {
+        const previewRecipient = stepParam === 'request'
+          ? { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+          : undefined;
+        setActiveFlow({ type: 'request', defaultCurrency: homeCurrency, accountLabel: 'Current account', step: stepParam ?? 'recipient', recipient: previewRecipient, startStep: (stepParam as 'recipient' | 'request') ?? 'recipient' });
+        break;
+      }
+      case 'convert': setActiveFlow({ type: 'convert', fromCurrency: homeCurrency, toCurrency: 'EUR', accountLabel: 'Current account', accountStyle: style }); break;
+      case 'add-money': setActiveFlow({ type: 'add-money', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style }); break;
+      case 'payment-link': setActiveFlow({ type: 'payment-link', defaultCurrency: homeCurrency, accountLabel: 'Current account' }); break;
+    }
+  }, []);
 
   // Sync URL when state changes (skip when handling popstate)
   const isPopstateRef = useRef(false);
@@ -224,6 +269,52 @@ function AppInner() {
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
   }, []);
+
+  // Handle navigate messages from DeviceFrame gallery (works in both browser iframe and Make)
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type !== 'navigate' || !e.data.path) return;
+      const url = new URL(e.data.path, window.location.origin);
+      const state = parseUrl(url.pathname);
+      const flowParam = url.searchParams.get('flow');
+      const stepParam = url.searchParams.get('step');
+      const homeCurrency = accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency;
+      const style: AccountStyle = accountType === 'business'
+        ? { color: '#163300', textColor: '#9fe870', iconName: 'Wise' }
+        : { color: 'var(--color-interactive-accent)', textColor: 'var(--color-interactive-control)', iconName: 'Wise' };
+
+      if (flowParam) {
+        switch (flowParam) {
+          case 'send': {
+            const previewRecipient = stepParam === 'amount'
+              ? accountType === 'business'
+                ? { name: 'Acme Corp', subtitle: 'Barclays Bank ending ·· 7821', initials: 'AC', hasFastFlag: false, badgeFlagCode: 'GBP' }
+                : { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+              : undefined;
+            setActiveFlow({ type: 'send', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style, startStep: (stepParam as 'recipient' | 'amount') ?? 'recipient', recipient: previewRecipient });
+            break;
+          }
+          case 'request': {
+            const previewRecipient = stepParam === 'request'
+              ? { name: 'Christie Davis', subtitle: '@christied25', initials: 'CD', hasFastFlag: true, badgeFlagCode: 'GBP' }
+              : undefined;
+            setActiveFlow({ type: 'request', defaultCurrency: homeCurrency, accountLabel: 'Current account', step: stepParam ?? 'recipient', recipient: previewRecipient, startStep: (stepParam as 'recipient' | 'request') ?? 'recipient' });
+            break;
+          }
+          case 'convert': setActiveFlow({ type: 'convert', fromCurrency: homeCurrency, toCurrency: 'EUR', accountLabel: 'Current account', accountStyle: style }); break;
+          case 'add-money': setActiveFlow({ type: 'add-money', defaultCurrency: homeCurrency, accountLabel: 'Current account', accountStyle: style }); break;
+          case 'payment-link': setActiveFlow({ type: 'payment-link', defaultCurrency: homeCurrency, accountLabel: 'Current account' }); break;
+        }
+      } else {
+        setActiveNavItem(state.navItem);
+        setSubPage(state.subPage);
+        setActiveFlow(null);
+      }
+      resetScroll();
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [accountType, businessHomeCurrency, consumerHomeCurrency]);
 
   const activeName = accountType === 'business' ? businessName : consumerName;
   const activeInitials = getInitials(activeName);
@@ -275,6 +366,11 @@ function AppInner() {
   const flowClosingRef = useRef(false);
   const flowOverlayRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<MobileNavHandle>(null);
+
+  // Notify parent frame of active flow changes
+  useEffect(() => {
+    window.parent.postMessage({ type: 'flow-change', flowType: activeFlow?.type ?? null }, '*');
+  }, [activeFlow]);
 
   // When activeFlow is set, mount the overlay (skip if already open)
   useEffect(() => {
@@ -546,7 +642,6 @@ function AppInner() {
       case 'Payments': return <Payments accountType={accountType} onSend={() => handleOpenSend(accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency)} onRequest={() => handleOpenRequest(accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency)} onPaymentLink={() => handleOpenPaymentLink(accountType === 'business' ? businessHomeCurrency : consumerHomeCurrency)} onAccountDetails={(code: string) => handleNavigateAccountDetails(code, 'payments')} onAccountDetailsList={() => handleNavigateAccountDetailsList('payments')} />;
       case 'Recipients': return <Recipients accountType={accountType} />;
       case 'Insights': return <Insights accountType={accountType} />;
-      case 'Team': return <Team />;
       default: return (
         <Home
           onNavigate={handleNavigateAnimated}
@@ -642,6 +737,8 @@ function AppInner() {
           accountType={accountType}
           avatarUrl={avatarUrl}
           initials={activeInitials}
+          startStep={activeFlow.startStep}
+          recipient={activeFlow.recipient}
         />
       )}
       {activeFlow.type === 'payment-link' && (

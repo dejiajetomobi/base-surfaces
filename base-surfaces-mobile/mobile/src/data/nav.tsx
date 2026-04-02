@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import {
   House, CardWise, List, Payments, Calendar,
   DirectDebits, Reload, RequestReceive, BillSplit,
-  Bills, Batch, Document, QrCode, Team, Recipients, BarChart,
+  Bills, Batch, Document, QrCode, Recipients, BarChart,
   Link as LinkIcon,
 } from '@transferwise/icons';
 import type { TranslationKey } from '../translations/en';
@@ -56,7 +56,6 @@ export const businessNav: NavItem[] = [
       { label: 'Quick Pay', translationKey: 'nav.quickPay', icon: <QrCode size={16} />, href: '/payments/quick-pay' },
     ],
   },
-  { label: 'Team', translationKey: 'nav.team', icon: <Team size={24} />, href: '/team' },
   { label: 'Recipients', translationKey: 'nav.recipients', icon: <Recipients size={24} />, href: '/recipients' },
   { label: 'Insights', translationKey: 'nav.insights', icon: <BarChart size={24} />, href: '/account-summary' },
 ];

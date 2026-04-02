@@ -26,6 +26,19 @@ shared-resources/
 ├── account-logic/           # Platform-agnostic business rules
 │   ├── account-types.md     # Account hierarchy, feature matrix
 │   └── interest-stocks.md   # Interest/stocks flag system
+├── content/                 # Writing & content guidelines (Wise tone, grammar, vocabulary)
+│   ├── writing-guidelines.md    # Master guide — start here for all content work
+│   ├── tone-of-voice.md         # Brand principles, context-specific tone, localization
+│   ├── grammar-and-style.md     # A-Z grammar rules and style reference
+│   ├── vocabulary.md            # Product terminology, words to use/avoid
+│   └── components/              # Component-specific writing rules
+│       ├── buttons.md
+│       ├── critical-banners.md
+│       ├── info-prompts.md
+│       ├── list-items.md
+│       ├── modals.md
+│       ├── snackbars.md
+│       └── text-inputs.md
 └── node_modules → ../base-surfaces-web/web/node_modules (symlink)
 ```
 

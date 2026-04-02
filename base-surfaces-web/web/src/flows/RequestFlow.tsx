@@ -37,16 +37,18 @@ type Props = {
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
+  startStep?: 'recipient' | 'request';
+  recipient?: RecipientInfo;
 };
 
-export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, onStepChange, accountType, avatarUrl, initials }: Props) {
+export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, onStepChange, accountType, avatarUrl, initials, startStep = 'recipient', recipient: initialRecipient }: Props) {
   const { t } = useLanguage();
 
   const isBusiness = accountType === 'business';
   const isGroup = jar === 'taxes';
 
-  const [step, setStep] = useState<'recipient' | 'request'>('recipient');
-  const [selectedRecipient, setSelectedRecipient] = useState<RecipientInfo | null>(null);
+  const [step, setStep] = useState<'recipient' | 'request'>(initialRecipient ? 'request' : startStep);
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientInfo | null>(initialRecipient ?? null);
   const [isPaymentLink, setIsPaymentLink] = useState(false);
   const [currency, setCurrency] = useState(defaultCurrency);
   const [amount, setAmount] = useState<number | null>(null);
