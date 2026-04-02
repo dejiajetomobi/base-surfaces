@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { SwitchVertical, ChevronDown } from '@transferwise/icons';
-import { Flag } from '@wise/art';
+import { Flag } from './Flag';
 import { CurrencyDropdown } from './CurrencyDropdown';
 import { useShimmer } from '../context/Shimmer';
 import { ShimmerCurrencyInputGroup } from './Shimmer';
@@ -112,7 +112,6 @@ export function CurrencyInputGroup({
               setOpenDropdown(null);
             }}
             onClose={() => setOpenDropdown(null)}
-            excludeCode={openDropdown === 'source' ? targetCurrency : sourceCurrency}
           />
         </div>
       )}

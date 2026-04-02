@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "description": "Overrides for base-surfaces-mobile Make build",
+  "fileReplacements": [
+    {
+      "description": "Stub WebGL hook with no-op returning useRef(null)",
+      "filePattern": "useLiquidGL.ts",
+      "content": "import { useRef } from 'react';\nexport function useLiquidGL() { return useRef(null); }\n"
+    },
+    {
+      "description": "Stub liquid glass hook with no-op",
+      "filePattern": "useLiquidGlass.ts",
+      "content": "import { useRef } from 'react';\nexport function useLiquidGlass() { return useRef(null); }\n"
+    }
+  ],
+  "fileSkips": [
+    {
+      "description": "Skip WebGL library file (replaced by hook stub)",
+      "filePattern": "liquidGL.js"
+    }
+  ],
+  "contentTransforms": [
+    {
+      "description": "Comment out live rates fetch to prevent network errors",
+      "match": "((?:export\\s+)?(?:async\\s+)?function\\s+fetch\\w*[Rr]ates?\\s*\\([^)]*\\)\\s*\\{)",
+      "replace": "$1 return; /* stubbed for Make */",
+      "flags": "g"
+    }
+  ],
+  "cssOverrides": [
+    {
+      "description": "Suppress hover states for mobile prototype",
+      "selector": ".np-text-link-caption:hover, .wds-list-item-interactive:not(.wds-list-item-spotlight):not(.disabled):not(:disabled):hover, .action-button-row__dropdown-item:hover, .mca-cards__link:hover, .mca-front > ul > .wds-list-item-interactive:hover, .transactions-list .wds-list-item-interactive:hover, .tasks-stack__btn:hover, .promotion-banner__container:hover, .promotion-banner__dismiss:hover, .transfer-calculator__info-btn .np-circle:hover, .currency-input-group__swap-btn:hover, .currency-dropdown__row:hover, .mobile-nav-item__link:hover, .cards-travel-hub-btn:hover, .recent-contact-card:hover, .recipients-page__search-clear:hover, .recipient-search-empty__add-link:hover, .tx-table tr:hover",
+      "properties": {
+        "all": "unset"
+      }
+    }
+  ]
+}

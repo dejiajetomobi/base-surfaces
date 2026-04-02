@@ -1,0 +1,187 @@
+/* Spec Viewer - Figma Design System Style */
+
+/* Dim overlay - sits below specs but above content */
+.spec-dim-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+html[class*="dark"] .spec-dim-overlay {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.spec-viewer {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+}
+
+/* System Color: #0E0F0C */
+:root {
+  --spec-color: #0E0F0C;
+  --spec-color-rgb: 237, 67, 16;
+}
+
+/* Container background overlays */
+.spec-container-bg {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+.spec-container-bg--fluid    { background: rgba(160, 225, 225, 0.35); }
+.spec-container-bg--standard { background: rgba(255, 215, 239, 0.35); }
+.spec-container-bg--narrow   { background: rgba(255, 235, 105, 0.35); }
+.spec-container-bg--compact  { background: rgba(255, 192, 145, 0.35); }
+
+/* Lines */
+.spec-line {
+  position: fixed;
+  pointer-events: none;
+}
+
+.spec-line--solid {
+  background: var(--spec-color);
+}
+
+.spec-line--dotted {
+  background: none;
+  border-style: dashed;
+  border-color: var(--spec-color);
+  border-width: 0;
+}
+
+.spec-line--vertical {
+  width: 1px;
+}
+
+.spec-line--vertical.spec-line--solid {
+  width: 1px;
+}
+
+.spec-line--vertical.spec-line--dotted {
+  border-left-width: 1px;
+  width: 0;
+}
+
+.spec-line--horizontal {
+  height: 1px;
+}
+
+.spec-line--horizontal.spec-line--solid {
+  height: 1px;
+}
+
+.spec-line--horizontal.spec-line--dotted {
+  border-top-width: 1px;
+  height: 0;
+}
+
+/* Measurement arrows (double-headed with line) */
+.spec-arrow {
+  position: fixed;
+  pointer-events: none;
+  height: 1px;
+  background: var(--spec-color);
+}
+
+.spec-arrow::before,
+.spec-arrow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* Left arrow */
+.spec-arrow::before {
+  left: 0;
+  border-width: 3px 5px 3px 0;
+  border-color: transparent var(--spec-color) transparent transparent;
+  transform: translateY(-50%);
+}
+
+/* Right arrow */
+.spec-arrow::after {
+  right: 0;
+  border-width: 3px 0 3px 5px;
+  border-color: transparent transparent transparent var(--spec-color);
+  transform: translateY(-50%);
+}
+
+/* Labels/Badges */
+.spec-badge {
+  position: fixed;
+  background: var(--spec-color);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  white-space: nowrap;
+  pointer-events: auto;
+  z-index: 10000;
+  line-height: 1.5;
+  letter-spacing: 0.00em;
+}
+
+/* Margin value badges (small squares) */
+.spec-badge--margin {
+  padding: 1x 4px;
+  font-size: 12px;
+  min-width: 10px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Breakpoint badge (bottom center) */
+.spec-badge--breakpoint {
+  padding: 1px 4px;
+  font-size: 12px;
+}
+
+/* Component labels */
+.spec-badge--component {
+  padding: 1px 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Dark mode - keep same colors (design system color) */
+html[class*="dark"] .spec-line--solid {
+  background: var(--spec-color);
+}
+
+html[class*="dark"] .spec-line--dotted {
+  border-color: var(--spec-color);
+}
+
+html[class*="dark"] .spec-arrow {
+  background: var(--spec-color);
+}
+
+html[class*="dark"] .spec-arrow::before {
+  border-color: transparent var(--spec-color) transparent transparent;
+}
+
+html[class*="dark"] .spec-arrow::after {
+  border-color: transparent transparent transparent var(--spec-color);
+}
+
+html[class*="dark"] .spec-badge {
+  background: var(--spec-color);
+  color: white;
+}

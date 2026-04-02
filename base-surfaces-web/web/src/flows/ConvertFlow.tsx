@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { OverlayHeader, Logo, Button, AvatarView, ExpressiveMoneyInput, ListItem } from '@transferwise/components';
-import { InfoCircle, ChevronDown, ChevronRight, SwitchVertical, AutoConvert, Money, Savings, Suitcase } from '@transferwise/icons';
-import { Flag } from '@wise/art';
+import { InfoCircle, ChevronDown, ChevronRight, SwitchVertical, AutoConvert, Money } from '@transferwise/icons';
+import { Flag } from '../components/Flag';
 import { ButtonCue } from '../components/ButtonCue';
 import { useLanguage } from '../context/Language';
 import { useLiveRates } from '../context/LiveRates';
 import { convertToHomeCurrency } from '../data/currency-rates';
-import { formatBalance } from '../data/balances';
 import { currencies } from '../data/currencies';
 import { businessCurrencies } from '../data/business-currencies';
-import { groupCurrencies } from '../data/taxes-data';
-import { getJar } from '../data/jar-data';
+import { taxesCurrencies } from '../data/taxes-data';
 import type { AccountType } from '../App';
 
 function WiseLogoIcon() {
@@ -23,33 +21,20 @@ function WiseLogoIcon() {
 
 type ButtonState = 'disabled' | 'loading' | 'active';
 
-export type AccountStyle = { color: string; textColor: string; iconName: string };
-
-function resolveIcon(iconName: string) {
-  switch (iconName) {
-    case 'Savings': return <Savings size={16} />;
-    case 'Suitcase': return <Suitcase size={16} />;
-    case 'Money': return <Money size={16} />;
-    default: return <WiseLogoIcon />;
-  }
-}
-
 type Props = {
   fromCurrency: string;
   toCurrency: string;
   accountLabel: string;
   toAccountLabel?: string;
   jar?: 'taxes';
-  jarId?: string;
-  accountStyle: AccountStyle;
-  toAccountStyle?: AccountStyle;
   onClose: () => void;
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
+  banner?: React.ReactNode;
 };
 
-export function ConvertFlow({ fromCurrency: initFrom, toCurrency: initTo, accountLabel, toAccountLabel, jar, jarId, accountStyle, toAccountStyle, onClose, accountType, avatarUrl, initials }: Props) {
+export function ConvertFlow({ fromCurrency: initFrom, toCurrency: initTo, accountLabel, toAccountLabel, jar, onClose, accountType, avatarUrl, initials, banner }: Props) {
   const { t } = useLanguage();
   const rates = useLiveRates();
 
@@ -66,7 +51,7 @@ export function ConvertFlow({ fromCurrency: initFrom, toCurrency: initTo, accoun
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isBusiness = accountType === 'business';
-  const isGroup = jar === 'taxes';
+  const isTaxes = jar === 'taxes';
   const avatarStyle = isBusiness
     ? { backgroundColor: '#163300', color: '#9fe870' }
     : undefined;
@@ -76,20 +61,24 @@ export function ConvertFlow({ fromCurrency: initFrom, toCurrency: initTo, accoun
   const fromLabel = labelsSwapped ? (toAccountLabel ?? accountLabel) : accountLabel;
   const toLabel = labelsSwapped ? accountLabel : (toAccountLabel ?? accountLabel);
 
-  // Account avatar styles — driven entirely by props
-  const resolvedToStyle = toAccountStyle ?? accountStyle;
-  const fromStyle = labelsSwapped ? resolvedToStyle : accountStyle;
-  const toStyle = labelsSwapped ? accountStyle : resolvedToStyle;
-  const fromAvatarStyle = { backgroundColor: fromStyle.color, color: fromStyle.textColor };
-  const fromAvatarIcon = resolveIcon(fromStyle.iconName);
-  const toAvatarStyle = { backgroundColor: toStyle.color, color: toStyle.textColor };
-  const toAvatarIcon = resolveIcon(toStyle.iconName);
+  // Account avatar styles
+  const taxesAvatarStyle = { backgroundColor: '#FFEB69', color: '#3a341c' };
+  const standardAvatarStyle = isBusiness
+    ? { backgroundColor: '#163300', color: '#9fe870' }
+    : { backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' };
 
-  // Find the balance for the "from" currency — search the active account's currencies
-  const jarDef = jarId ? getJar(jarId) : undefined;
-  const fromAccountCurrencies = jarDef ? jarDef.currencies : isGroup ? groupCurrencies : (isBusiness ? businessCurrencies : currencies);
-  const fromCurrencyData = fromAccountCurrencies.find((c) => c.code === fromCurrency);
-  const availableBalance = fromCurrencyData ? formatBalance(fromCurrencyData) : `0.00 ${fromCurrency}`;
+  const fromIsTaxes = isTaxes ? !labelsSwapped : false;
+  const fromAvatarStyle = fromIsTaxes ? taxesAvatarStyle : standardAvatarStyle;
+  const fromAvatarIcon = fromIsTaxes ? <Money size={16} /> : <WiseLogoIcon />;
+
+  const toIsTaxes = isTaxes ? labelsSwapped : false;
+  const toAvatarStyle = toIsTaxes ? taxesAvatarStyle : standardAvatarStyle;
+  const toAvatarIcon = toIsTaxes ? <Money size={16} /> : <WiseLogoIcon />;
+
+  // Find the balance for the "from" currency — search across all account currencies
+  const allCurrencies = [...(isTaxes ? taxesCurrencies : []), ...(isBusiness ? businessCurrencies : currencies)];
+  const fromCurrencyData = allCurrencies.find((c) => c.code === fromCurrency);
+  const availableBalance = fromCurrencyData ? fromCurrencyData.formattedBalance : `0.00 ${fromCurrency}`;
 
   // Compute exchange rate for the rate pill
   const rateValue = convertToHomeCurrency(1, fromCurrency, toCurrency, rates);
@@ -186,6 +175,7 @@ export function ConvertFlow({ fromCurrency: initFrom, toCurrency: initTo, accoun
 
   return (
     <div className="convert-flow">
+      {banner}
       <OverlayHeader
         onClose={onClose}
         avatar={avatar}

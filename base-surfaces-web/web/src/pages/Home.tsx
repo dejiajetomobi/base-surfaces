@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { Plus, RequestReceive, Send, Savings, Suitcase } from '@transferwise/icons';
+import { Plus, RequestReceive, Send } from '@transferwise/icons';
 import { Button } from '@transferwise/components';
-import { Illustration } from '@wise/art';
+import { Illustration } from '../components/Illustration';
 import type { AccountType } from '../App';
 import { currencies } from '../data/currencies';
 import { businessCurrencies } from '../data/business-currencies';
@@ -9,17 +9,14 @@ import { buildTransactions } from '../data/transactions';
 import { buildBusinessTransactions } from '../data/business-transactions';
 import { usePrototypeNames } from '../context/PrototypeNames';
 import { useLanguage, useTxLabels } from '../context/Language';
-import { convertToHomeCurrency, usdBaseRates } from '../data/currency-rates';
+import { convertToHomeCurrency } from '../data/currency-rates';
+import { useLiveRates } from '../context/LiveRates';
 import type { TranslationKey } from '../translations/en';
 import { TotalBalanceHeader } from '../components/TotalBalanceHeader';
 import { ActionButtonRow } from '../components/ActionButtonRow';
 import { Carousel } from '../components/Carousel';
 import { MultiCurrencyAccountCard } from '../components/MultiCurrencyAccountCard';
 import { EmptyAccountCard } from '../components/EmptyAccountCard';
-import { JarCard } from '../components/JarCard';
-import { savingsJar, suppliesJar } from '../data/jar-data';
-import { groupTotalBalance } from '../data/taxes-data';
-import { computeTotalBalance } from '../data/balances';
 import { TaskCard } from '../components/TaskCard';
 import { TasksStack } from '../components/TasksStack';
 import { ActivitySummary } from '../components/ActivitySummary';
@@ -78,15 +75,15 @@ const businessPromotionVariants = allPromotionVariants.filter((p) => p.sectionTi
 
 
 
-const GROUP_BALANCE = groupTotalBalance;
+const TAXES_BALANCE = 5000;
 
 type SendAgainRecipient = { name: string; subtitle: string; avatarUrl?: string; hasFastFlag: boolean; badgeFlagCode?: string };
 
-export function Home({ onNavigate, onNavigateAccount, onNavigateCurrency, onNavigateGroupAccount, onNavigateGroupCurrency, onNavigateJarAccount, onNavigateJarCurrency, accountType = 'personal', onAddMoney, onSend, onSendWithCurrency, onSendAgain, onRequest, onPaymentLink, onAccountDetails }: { onNavigate?: (page: string) => void; onNavigateAccount?: () => void; onNavigateCurrency?: (code: string) => void; onNavigateGroupAccount?: () => void; onNavigateGroupCurrency?: (code: string) => void; onNavigateJarAccount?: (jarId: string) => void; onNavigateJarCurrency?: (jarId: string, code: string) => void; accountType?: AccountType; onAddMoney?: () => void; onSend?: () => void; onSendWithCurrency?: (sourceCurrency: string, targetCurrency: string, sourceAmount?: string, targetAmount?: string) => void; onSendAgain?: (recipient: SendAgainRecipient, amount?: string) => void; onRequest?: () => void; onPaymentLink?: () => void; onAccountDetails?: () => void }) {
+export function Home({ onNavigate, onNavigateAccount, onNavigateCurrency, onNavigateTaxesAccount, onNavigateTaxesCurrency, accountType = 'personal', onAddMoney, onSend, onSendWithCurrency, onSendAgain, onRequest, onPaymentLink }: { onNavigate?: (page: string) => void; onNavigateAccount?: () => void; onNavigateCurrency?: (code: string) => void; onNavigateTaxesAccount?: () => void; onNavigateTaxesCurrency?: (code: string) => void; accountType?: AccountType; onAddMoney?: () => void; onSend?: () => void; onSendWithCurrency?: (sourceCurrency: string, targetCurrency: string, sourceAmount?: string, targetAmount?: string) => void; onSendAgain?: (recipient: SendAgainRecipient, amount?: string) => void; onRequest?: () => void; onPaymentLink?: () => void }) {
   const { consumerName, businessName, consumerHomeCurrency, businessHomeCurrency } = usePrototypeNames();
   const { t } = useLanguage();
   const txLabels = useTxLabels();
-  const rates = usdBaseRates;
+  const rates = useLiveRates();
   const isBusiness = accountType === 'business';
   const homeCurrency = isBusiness ? businessHomeCurrency : consumerHomeCurrency;
   const activeCurrencies = isBusiness ? businessCurrencies : currencies;
@@ -99,8 +96,10 @@ export function Home({ onNavigate, onNavigateAccount, onNavigateCurrency, onNavi
   const accountDisplaySymbol = activeCurrencies[0]?.symbol ?? '£';
   const currentAccountInDisplayCurrency = activeCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, accountDisplayCode, rates), 0);
   const currentAccountFormatted = currentAccountInDisplayCurrency.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // TotalBalanceHeader: single source of truth via computeTotalBalance (includes all accounts + jars + groups)
-  const totalBalance = computeTotalBalance(accountType, homeCurrency, rates);
+  // TotalBalanceHeader: convert all currencies to the home currency
+  const currentAccountTotalInHome = activeCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0);
+  const taxesInHome = accountType === 'business' ? convertToHomeCurrency(TAXES_BALANCE, 'GBP', homeCurrency, rates) : 0;
+  const totalBalance = currentAccountTotalInHome + taxesInHome;
   const totalBalanceFormatted = totalBalance.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [transitioningToTx, setTransitioningToTx] = useState(false);
   const txSectionRef = useRef<HTMLElement>(null);
@@ -170,44 +169,43 @@ export function Home({ onNavigate, onNavigateAccount, onNavigateCurrency, onNavi
             onNavigateCurrency={onNavigateCurrency}
             currencyData={activeCurrencies}
             businessCardStyle={accountType === 'business'}
-            onAccountDetails={onAccountDetails}
           />
           {accountType === 'business' && (
-            <MultiCurrencyAccountCard
-              title={t('home.taxes')}
-              totalAmount={`£${GROUP_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              currencyCount={1}
-              balances={[{ code: 'GBP', amount: `£${GROUP_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }]}
-              hasCards={true}
-              cardCount={2}
-              onNavigateCards={onNavigate ? () => onNavigate('Cards') : undefined}
-              onNavigateAccount={onNavigateGroupAccount}
-              onNavigateCurrency={onNavigateGroupCurrency}
-              cardTopImage={new URL('../assets/card-tapestry-orange.jpg', import.meta.url).href}
-              cardBottomImage={new URL('../assets/card-tapestry-green.jpg', import.meta.url).href}
-              hideAccountDetails
-              cardInfoLight
-              currencyData={[]}
-            />
-          )}
-          {(() => {
-            const jar = isBusiness ? suppliesJar : savingsJar;
-            const jarBalances = jar.currencies.map((c) => ({ code: c.code, amount: `${c.symbol}${c.balance.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }));
-            const jarTotal = jar.currencies.length >= 2
-              ? `${jar.currencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, jar.currencies[0].code, rates), 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${jar.currencies[0].code}`
-              : undefined;
-            return (
-              <JarCard
-                name={t(jar.nameKey as any)}
-                icon={isBusiness ? <Suitcase size={24} /> : <Savings size={24} />}
-                color={jar.color}
-                totalAmount={jarTotal}
-                balances={jarBalances}
-                onNavigateAccount={() => onNavigateJarAccount?.(jar.id)}
-                onNavigateCurrency={(code) => onNavigateJarCurrency?.(jar.id, code)}
+            <>
+              <MultiCurrencyAccountCard
+                title={t('home.taxes')}
+                totalAmount={`£${TAXES_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                currencyCount={1}
+                balances={[{ code: 'GBP', amount: `£${TAXES_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }]}
+                hasCards={true}
+                cardCount={2}
+                onNavigateCards={onNavigate ? () => onNavigate('Cards') : undefined}
+                onNavigateAccount={onNavigateTaxesAccount}
+                onNavigateCurrency={onNavigateTaxesCurrency}
+                cardTopImage={new URL('../assets/card-tapestry-orange.jpg', import.meta.url).href}
+                cardBottomImage={new URL('../assets/card-tapestry-green.jpg', import.meta.url).href}
+                hideAccountDetails
+                cardInfoLight
+                currencyData={[]}
               />
-            );
-          })()}
+              <MultiCurrencyAccountCard
+                title={t('home.taxes')}
+                totalAmount={`£${TAXES_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                currencyCount={1}
+                balances={[{ code: 'GBP', amount: `£${TAXES_BALANCE.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }]}
+                hasCards={true}
+                cardCount={2}
+                onNavigateCards={onNavigate ? () => onNavigate('Cards') : undefined}
+                onNavigateAccount={onNavigateTaxesAccount}
+                onNavigateCurrency={onNavigateTaxesCurrency}
+                cardTopImage={new URL('../assets/card-tapestry-orange.jpg', import.meta.url).href}
+                cardBottomImage={new URL('../assets/card-tapestry-green.jpg', import.meta.url).href}
+                hideAccountDetails
+                cardInfoLight
+                currencyData={[]}
+              />
+            </>
+          )}
           <EmptyAccountCard />
         </Carousel>
       </section>

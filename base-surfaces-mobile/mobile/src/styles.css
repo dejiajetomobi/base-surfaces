@@ -81,41 +81,61 @@ input, textarea, select, button, a {
 /* ===== Page Layout (mobile-only — always renders at mobile width) ===== */
 
 .page-layout {
-  min-height: 100vh;
+  height: 100vh;
   max-width: 440px;
   margin: 0 auto;
   background: var(--color-background-screen);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-layout:not(:has(.critical-banner)) .column-layout-main {
+  margin-top: 48px;
+}
+
+.page-layout:has(.critical-banner) {
+  background: var(--critical-banner-bg);
+}
+
+.page-layout:has(.critical-banner) .column-layout-main {
+  background: var(--color-background-screen);
+  border-radius: 32px 32px 0px 0px;
+  padding-top: 4px;
 }
 
 .column-layout-main {
   --content-pad-top: 120px;
   --content-pad-bottom: 80px;
   --content-pad-x: 16px;
+  position: relative;
   flex: 1;
   min-width: 0;
   padding: 0 var(--content-pad-x);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .container-content {
   flex: 1;
-  padding-top: var(--content-pad-top);
+  padding-top: 32px;
   padding-bottom: var(--content-pad-bottom);
+  overflow-y: auto;
 }
 
 /* ===== iOS Push/Pop Page Transition ===== */
 
 .page-layer {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  min-height: 100vh;
-  min-height: 100dvh;
+  bottom: 0;
   padding: var(--content-pad-top) var(--content-pad-x) var(--content-pad-bottom);
   background: var(--color-background-screen);
   will-change: transform, opacity;
+  overflow-y: auto;
 }
 
 /* Push: old page slides left + dims */
@@ -5770,12 +5790,11 @@ html[class*="dark"] .more-menu__dropdown {
 /* ===== iOS Top Bar ===== */
 
 .ios-top-bar {
-  position: fixed;
+  position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  padding: 46px 16px 0;
   isolation: isolate;
 }
 

@@ -2,47 +2,93 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Drawer, SelectInput, SelectInputOptionContent, SegmentedControl, Field, Input, ListItem, Button, useSnackbar } from '@transferwise/components';
 import { Slider } from '@transferwise/icons';
 
-const PROMPT_NEW_FLOW = `Build a new interactive flow for this Wise app prototype.
+const PROMPT_NEW_FLOW = `You are building a new interactive flow for a Wise app prototype. This prototype is a high-fidelity React + TypeScript + Vite project that replicates the Wise app's top-level surfaces (Home, Cards, Transactions, Payments, Recipients, Team, Insights, Account, CurrentAccount, CurrencyPage). Your job is to build a new multi-step flow that launches from an existing entry point in this prototype.
 
-Before writing any code, read these docs:
-- **CLAUDE.md** — project rules, architecture, conventions
-- **\`src/flows/structure.md\`** — flow overlay architecture, header/body/button patterns, props, state machine
-- **\`web/design-system/components.md\`** — Neptune component inventory
-- **\`web/design-system/custom-components.md\`** — existing custom components (check what's already built)
+Before writing any code, ask the user the following questions **one at a time**, waiting for each answer:
 
-Then ask the user the following questions **one at a time**, waiting for each answer:
+---
 
 ### Step 1: Account type
 Which account type should this flow be built for?
-- **Consumer/Personal**, **Business**, or **Both**
+- **Consumer/Personal** — the default personal account (nav: Home, Cards, Transactions, Payments with Bill splits/Payment requests, Recipients, Insights)
+- **Business** — the business account (nav: Home, Cards, Transactions, Payments with Bills/Batch/Invoices/Payment links/Quick Pay, Team, Recipients, Insights)
+- **Both** — the flow exists on both account types (may have minor differences between them)
 
 ### Step 2: Entry point
-Where does this flow start? Ask for the **page** and the **specific element** that triggers it.
+Where in the prototype does this flow start? Ask the user to name:
+- The **page** (e.g. Home, Payments, Account/Profile, Cards, CurrentAccount, CurrencyPage)
+- The **specific element** that triggers the flow (e.g. "Send" action button, "Payment methods" menu item, "Order a new card" list item, "Add a currency" button)
 
-If the user is unsure, read the relevant page component to list available entry points (action buttons, menu items, list items).
+If the user is unsure, list the available entry points on the relevant page so they can pick one. The main action buttons are:
+- **Home page (personal)**: Send, Add money, Request, Convert (top action row); plus account cards, Send Again contacts
+- **Home page (business)**: Send, Add money, Get paid (dropdown: Share payment link, Create invoice, Request a payment, Split a bill, Pay invoice), Convert (top action row)
+- **Account/Profile page**: Security and privacy, Notifications, Integrations and tools, Payment methods, Limits, Language and appearance, Personal details (personal) / Business details (business), Team members (business), Referrals, Close account
+- **Cards page**: Order a new card, Travel hub, individual card items
+- **Payments page**: Scheduled transfers, Direct Debits, Recurring card payments, Payment requests/Bills, Bill splits/Batch, Invoices, Payment links, Quick Pay, Wisetag, Auto Conversions, Ecommerce
+- **CurrentAccount page**: individual currency items, Add a currency, Edit current account
+- **CurrencyPage**: Statements and reports, Direct Debits, Get proof, Remove currency, Auto conversions, Set up connection (business)
 
 ### Step 3: Design references
-Ask the user to provide any of:
-- **Figma URL** — use the Figma MCP tool (\`get_design_context\`) to extract design + code hints
-- **Screenshots** — photos from the live Wise app or reference
-- **Source code** — production components or file references
-- **Written spec** — description of each step, inputs, states
+Ask the user to provide as many of the following as they can — each one significantly improves the output quality:
+- **Figma URL** — a link to the Figma design for this flow (e.g. \`figma.com/design/...\`). If provided, use the Figma MCP tool (\`get_design_context\`) to extract the design, code hints, component mappings, and screenshots.
+- **Screenshots** — photos or screenshots of the flow from the live Wise app or another reference. These help match layout, spacing, and visual details.
+- **Source code** — if they have access to the production source code for this flow, they can paste relevant components or point to files. This helps match exact data structures and API patterns.
+- **Written spec** — a description of what each step in the flow does, what inputs are collected, what happens on submit, error states, etc.
 
-Tell the user: "The more reference material you provide, the more accurate the result. Figma designs are especially useful — I can read them directly."
+Tell the user: "The more reference material you provide, the more accurate the result. Figma designs are especially useful — I can read them directly via the Figma MCP connection."
 
 ### Step 4: Flow details
-Confirm your understanding by listing: entry point, each screen/step, data collected at each step, loading/error/empty states, and exit/completion behaviour. Ask the user to confirm before building.
+Based on what the user has described, confirm your understanding by listing:
+- The entry point and how it's triggered
+- Each screen/step in the flow (e.g. "Step 1: Select recipient → Step 2: Enter amount → Step 3: Review → Step 4: Confirmation")
+- What data is collected at each step
+- Any loading, error, or empty states
+- How the user exits/completes the flow (success screen, back to previous page, etc.)
 
-## Implementation
+Ask the user to confirm or adjust before building.
 
-Follow all rules from CLAUDE.md and the flow structure doc (\`src/flows/structure.md\`). Key points:
-- Create the flow as a single component in \`src/flows/\` managing its own step state
-- Wire the entry point via \`activeFlow\` state in App.tsx
-- Use \`@transferwise/components\`, \`@transferwise/icons\`, DS typography classes, DS colour tokens — never build custom equivalents
-- Use \`@wise/art\` for illustrations, \`@wise/art\` \`Flag\` component for currency flags
-- All UI text through \`t()\`, keys in all 4 translation files (en, es, de, fr)
-- Styles in \`src/styles.css\` using BEM: \`.<flow-name>__<element>\`
-- Run \`npx tsc --noEmit\` after, test both themes and all breakpoints`;
+---
+
+## Implementation rules
+
+Once confirmed, follow these rules strictly:
+
+### Architecture
+- **No router.** Navigation is state-driven. The app uses \`activeNavItem\` (English string like \`'Home'\`, \`'Cards'\`) for top-level pages and a \`subPage\` union type for drill-down views. Your flow should add new entries to the \`SubPage\` type or use a local state machine within a page component.
+- **Flow as a component.** Create the flow as a single component (e.g. \`src/flows/SendFlow.tsx\` or \`src/pages/SendFlow.tsx\`) that manages its own step state internally. The parent page passes an \`onClose\` or \`onBack\` callback.
+- **Entry point wiring.** Wire the entry point button/item to open your flow via state in the parent page. Don't modify the existing page structure beyond adding the trigger.
+
+### Component usage
+- **Always use \`@transferwise/components\`** — Button, IconButton, ListItem, Field, Input, SelectInput, SegmentedControl, SearchInput, Badge, Drawer, Modal, Snackbar, etc. Never build custom equivalents.
+- **Always use \`@transferwise/icons\`** — for any iconography. Browse the available icons in the package.
+- **Use DS typography classes** — \`np-text-display-title\`, \`np-text-title-section\`, \`np-text-title-body\`, \`np-text-title-group\`, \`np-text-body-default\`, \`np-text-body-small\`, etc. Never hardcode font sizes.
+- **Use DS colour tokens** — \`var(--color-content-primary)\`, \`var(--color-content-secondary)\`, \`var(--color-background-neutral)\`, \`var(--color-border-neutral)\`, \`var(--color-sentiment-positive)\`, \`var(--color-sentiment-negative)\`, etc. Never hardcode hex colours except for brand-specific ones documented in the currency data.
+- **Use the local Flag component** (\`src/components/Flag.tsx\`) for currency flags, not \`@wise/art\`. Flags are self-hosted in \`public/flags/\`.
+- **Use the local Illustration component** (\`src/components/Illustration.tsx\`) for promo illustrations, not \`@wise/art\`.
+
+### Translations
+- All user-facing text must go through the \`t()\` function from \`useLanguage()\`.
+- Add new keys to both \`src/translations/en.ts\` and \`src/translations/es.ts\`.
+- Key naming: use the pattern \`flow.<flowName>.<element>\` (e.g. \`flow.send.recipientTitle\`, \`flow.send.amountLabel\`).
+- Do NOT translate: names, currency codes, amounts, brand terms.
+
+### Styling
+- Add styles to \`src/styles.css\` using BEM-like class naming: \`.<flow-name>__<element>\` (e.g. \`.send-flow__header\`, \`.send-flow__step\`).
+- Follow the existing responsive patterns: XL (>=1160px), LG (840-1159px), MD (600-839px), SM (<600px).
+- Use \`section-card\` class for card-like containers where appropriate.
+- Use existing spacing patterns from the prototype (padding/margin multiples of 4px or 8px).
+
+### Data
+- If the flow needs data (recipients, currencies, etc.), import from existing data files (\`src/data/currencies.ts\`, \`src/data/transactions.tsx\`, etc.) where possible.
+- If new data is needed, create a new file in \`src/data/\` following the existing patterns.
+- Use the \`usePrototypeNames()\` context for the current user's name.
+- Use \`AccountType\` from \`src/App.tsx\` to handle consumer vs business differences.
+
+### Quality
+- Run \`npx tsc --noEmit\` to verify no type errors.
+- Test the flow in both light and dark themes.
+- Test at desktop, tablet, and mobile breakpoints.
+- Ensure the back button in the TopBar correctly returns to the previous view.`;
 
 const PROMPT_SWITCH_ACCOUNT = `Switch the prototype to start from the Business account instead of Consumer/Personal.
 
@@ -52,235 +98,599 @@ There are two places to update:
    \`const [accountType, setAccountType] = useState<AccountType>('personal');\`
    Change \`'personal'\` to \`'business'\`.
 
+   In the component-library variant, the state is instead:
+   \`const [isBusiness, setIsBusiness] = useState(false);\`
+   Change \`false\` to \`true\`.
+
 2. **src/components/PrototypeSettings.tsx** — find the segmented control state:
    \`const [accountType, setAccountType] = useState('consumer');\`
    Change \`'consumer'\` to \`'business'\`.
 
 Do not change any other behaviour, navigation items, theme, or component logic. Only change the default initial values so the prototype loads in business mode.`;
 
-const PROMPT_NEW_ACCOUNT = `Add a new account to the prototype.
+const PROMPT_NEW_ACCOUNT = `Add a new account card to the prototype with its own currencies, subpages, and data.
 
-Before writing code, read these docs:
-- **\`shared-resources/account-logic/account-types.md\`** — full account type reference, feature matrix, hard rules, visual rules
-- **\`web/design-system/custom-components.md\`** — MultiCurrencyAccountCard, JarCard component docs
-- **CLAUDE.md** — architecture, data file locations
+Before making any changes, ask the user the following questions:
 
-Then ask the user the following questions:
+1. **Which account type?** — Should this new account be added to the Consumer/Personal side or the Business side? This matters because:
+   - **Personal** has a single "Current account" card on the Home page with currencies (GBP, EUR, USD, CAD) and personal transactions. The navigation has personal-specific items (Bill splits, Payment requests).
+   - **Business** already has a "Current account" card plus a "Taxes" card. The navigation has business-specific items (Bills, Batch, Invoices, Payment links, Quick Pay, Team). Business also has team members and team cards.
 
-1. **Which account type?** — Current Account, Jar, or Group/Shared? (Read account-types.md for what each supports)
-2. **Consumer or Business?**
-3. **What should it be called?** — e.g. "Savings", "Travel", "Marketing"
-4. **Which icon and colour?** (Jars only — others use Wise logo). Offer Neptune expressive brand colours: Yellow \`#FFEB69\`, Orange \`#FFC091\`, Blue \`#A0E1E1\`, Pink \`#FFD7EF\`, Green \`#9FE870\`. Icon from \`@transferwise/icons\`.
-5. **Which currencies and starting balances?**
-6. **Pre-populated transactions or empty?**
-7. **Should it have cards?** (Current Account or Group/Shared only — Jars NEVER have cards)
-8. **Team member connected?** (Group/Shared only)
+2. **What should the account be called?** — e.g. "Savings", "Travel", "Marketing", "Taxes" (if personal), "Operations", etc. This name appears on the card title and in the CurrentAccount page header.
+
+3. **Which icon and colour?** — The account card header uses an avatar with a background colour and icon. Ask the user to pick:
+   - **Colour** (one of the brand colours): Navy \`#37517e\`, Green \`#9FE870\`, Dark Green \`#163300\`, Yellow \`#FFEB69\`, Orange \`#FF7E42\`, Purple \`#BFA8FF\`, Aqua \`#92EFDB\`, Pink \`#FF89A9\`
+   - **Icon** — pick from \`@transferwise/icons\` (e.g. Money, Briefcase, Globe, Rewards, Heart, Shield, etc.)
+
+4. **Which currencies?** — Which currency balances should the new account have? e.g. GBP only, or GBP + EUR + USD, etc. Ask for starting balances for each.
+
+5. **Should it have transactions?** — Ask whether the user wants:
+   - Pre-populated sample transactions (like the existing accounts have), or
+   - An empty account with no transaction history
+
+6. **Should it have cards (payment cards) connected?** — Ask whether to:
+   - Add new card(s) linked to this account (physical, digital, or both)
+   - Leave it with no cards
+   If yes, the cards need to appear in the Cards page and in the account's sidebar/options. The user needs to go to Figma and export the card tapestry images and the card medium icon for the new card variant. The tapestry assets are found here: https://www.figma.com/design/8RGFGBqhGilp95HIKw5PJa?node-id=75-3016 and the card medium icons here: https://www.figma.com/design/8RGFGBqhGilp95HIKw5PJa?node-id=75-3109. Export the relevant assets and place them in \`src/assets/\`.
+
+7. **Should a team member be connected?** (Business only) — If adding to the business account, ask whether an existing team member (Connor Berry or Jamie Reynolds) or a new team member should be associated with this account group.
 
 ---
 
-Once confirmed, implement following account-types.md rules strictly. Read the existing code before building:
+Once the user has answered, here is how to implement the new account:
 
 ### Data layer
-- **Jars:** Add a \`JarDefinition\` to \`shared-resources/data/jar-data.tsx\`, add to \`getJar()\`, add translation keys to all 4 language files
-- **Current Account / Group:** Create currency data file in \`shared-resources/data/\`, optionally create transactions file
 
-### Home page
-- Read \`src/pages/Home.tsx\` to see how existing accounts are wired
-- Jars use \`<JarCard>\`, others use \`<MultiCurrencyAccountCard>\` — follow existing patterns
-- Update total balance calculation to include the new account
+1. **Create a new currency data file** — e.g. \`src/data/<name>-currencies.ts\`
+   - Export an array of \`CurrencyData\` objects (same type as \`src/data/currencies.ts\`)
+   - Export a total balance computed with \`.reduce()\`
 
-### Account + Currency subpages
-- Read \`src/pages/CurrentAccount.tsx\` and \`src/pages/CurrencyPage.tsx\` — both already handle \`jarConfig\` for jars
-- Follow the feature matrix from account-types.md (account details, cards, Request button, more menu items)
+2. **Create a new transactions data file** (if the user wants transactions) — e.g. \`src/data/<name>-transactions.tsx\`
+   - Export an array of \`Transaction\` objects (same type as \`src/data/transactions.tsx\`)
+   - Include icons from \`@transferwise/icons\` (Send, Receive, Convert, Plus) or imgSrc URLs for merchant logos
+   - Each transaction needs: name, subtitle, amount (string), isPositive, icon or imgSrc, date, currency
 
-### Navigation
-- Jar routing already exists via SubPage type — just add to \`getJar()\` and the carousel
-- Current Account / Group: add new SubPage entries + navigation callbacks in App.tsx
+### Home page (\`src/pages/Home.tsx\`)
 
-### Insights
-- Include new account currencies in total balance and spending calculations
+3. **Add the new account card** to the Carousel in the Home page:
+   - Import the new currency data and total balance
+   - Add a new \`<MultiCurrencyAccountCard>\` inside the \`<Carousel>\` (before the \`<EmptyAccountCard />\`)
+   - Set the card's props: title, totalAmount, currencyCount, balances, hasCards, cardCount
+   - If it should look like the Taxes card (dark background, light text), set \`cardInfoLight\` and use custom \`cardTopImage\`/\`cardBottomImage\` pointing to the exported Figma tapestry assets
+   - If it's a standard card, set \`businessCardStyle={false}\`
+   - Wire up \`onNavigateAccount\` and \`onNavigateCurrency\` callbacks
 
-**Note:** Data files in \`shared-resources/data/\` are shared between the web and mobile prototypes. Changes here will affect both apps.
+4. **Update the total balance calculation** — The \`totalBalance\` variable on the Home page sums up all account balances. Add the new account's total to this sum so TotalBalanceHeader displays the correct overall balance.
 
-Do not change any existing account data, transactions, or balances.`;
+### Account subpage (\`src/pages/CurrentAccount.tsx\`)
 
-const PROMPT_UPDATE_TRANSACTIONS = `Add new transactions to ALL accounts across ALL currencies, bringing the history up to today's date. Then update every balance so all numbers add up.
+5. **Add a new jar/account variant** — The CurrentAccount component already handles \`jar?: 'taxes'\`. Extend this:
+   - Add the new account name as a jar option in the \`Props\` type
+   - Import the new currency and transaction data
+   - Add conditions so when \`jar\` matches the new account, it uses the correct currencies, transactions, and total balance
+   - Set the correct header label, icon, and colour in \`AccountPageHeader\`
 
-Check what today's date is before starting.
+### Navigation (\`src/App.tsx\`)
 
-## Step 1: Discover the current state
+6. **Add SubPage routing** — The \`SubPage\` type union needs a new variant for the new account (like \`{ type: 'taxes-account' }\`). Add:
+   - A new SubPage type entry
+   - Navigation callbacks (\`onNavigate<Name>Account\`, \`onNavigate<Name>Currency\`) passed to the Home page
+   - Breadcrumb handling so the user can navigate back from the new account's subpages
 
-**Read these files first** — do NOT assume what exists:
-- \`shared-resources/data/currencies.ts\` — personal currencies (codes, balances, \`hasInterest\`/\`hasStocks\` flags)
-- \`shared-resources/data/business-currencies.ts\` — business currencies
-- \`shared-resources/data/transactions.tsx\` — personal transactions (note most recent dates)
-- \`shared-resources/data/business-transactions.tsx\` — business transactions
-- \`shared-resources/data/taxes-data.tsx\` — taxes group
-- \`shared-resources/data/jar-data.tsx\` — jar accounts (each has own \`currencies\` and \`transactions\` arrays)
+### Insights page (\`src/pages/Insights.tsx\`)
 
-### Re-dating existing transactions
+7. **Update balance calculations** — The Insights page computes:
+   - \`totalBalance\`: must include the new account's currencies
+   - \`cashBalance\`: must include the new account's balances
+   - \`spentThisMonth\`: must include debits from the new account's transactions
+   - \`totalInterestReturns\`: must include any "Wise Interest" transactions from the new account
+   - Import the new data files and add them to the relevant \`.reduce()\` calculations
 
-Before adding new ones:
-1. Work out what calendar date the existing "Today" and "Yesterday" refer to (look at surrounding dated transactions for context)
-2. Replace those literal strings with their actual \`'DD Month'\` date
-3. Add new transactions at the top using "Today" and "Yesterday" relative to the **current** date
+### Cards page (\`src/pages/Cards.tsx\`) — if cards are connected
 
-## Step 2: Add transactions
+8. **Add new card entries** to the Cards page data for the new account's cards. Each card needs a last-4-digits number, variant style, and account association.
 
-**Read the existing transaction files thoroughly** to match the exact patterns — types, fields, icons, subtitles, logo helper, amount formatting. Follow every convention you see in the existing data.
+### Card visuals (\`src/pages/CurrentAccount.tsx\`)
 
-Key rules:
-- Transactions use a \`labels\` parameter for translated subtitles — use \`labels.sent\`, \`labels.added\`, \`labels.moved\`, etc.
-- Conversions need a \`conversion\` object with \`fromCurrency\`, \`toCurrency\`, \`fromAmount\`, \`toAmount\`
-- Wise Interest: only on personal currencies with \`hasInterest: true\`, never on business
-- Positive amounts: prefix \`'+ '\`. Negative amounts: no prefix (UI handles it via \`isPositive: false\`)
-- Reverse chronological order, grouped by date with comments
+9. **Add CardThumbnail variant** — If the new account has cards with a unique colour, add a new variant to the \`CardThumbnail\` component and its CSS class \`card-thumbnail--<variant>\` in \`src/styles.css\`.
 
-### Realism rules
-- **Vary merchants.** Never repeat the same brand more than twice across all transactions for a currency. Use a wide mix of real-world brands per currency (e.g. USD: Amazon, Target, Whole Foods, Uber, DoorDash, Nike, Spotify, Apple, Costco, Walgreens, etc.).
-- **Vary amounts.** Avoid patterns where all amounts end in .99, .49, .00, or .50. Mix realistic endings like .17, .63, .42, .08, .74. Subscriptions can use standard pricing but card purchases should look organic.
-- **Mix transaction types.** Don't make every transaction a card spend. Include a healthy mix of: card purchases (\`imgSrc\`), person-to-person sends (\`icon: Send\`), received money (\`icon: Receive\`), conversions (\`icon: Convert\`), and top-ups (\`icon: Plus\`). Jars should include "From [CURRENCY]" internal moves.
-- **Logos use logo.dev.** Card purchase merchants use \`logoUrl('domain.com')\` — pick domains that have good logos on logo.dev (major brands, not obscure ones).
+Do not change any existing account data, transactions, or balances. Only add new data alongside what already exists.`;
 
-## Step 3: Verify balances
+const PROMPT_UPDATE_TRANSACTIONS = `Add new transactions to ALL accounts (Consumer/Personal and Business) across ALL their currencies, bringing the transaction history up to today's date. Then update every balance, total, and calculation in the prototype so all numbers add up correctly.
 
-Balances auto-compute via \`computeCurrencyBalance(code, txList)\` — no manual recalculation needed. After adding transactions, verify the computed balances look reasonable. If a balance goes negative, adjust the first "Add" (consumer) or "Receive" (business) transaction amount. Update \`totalReturns\` on currencies with interest.
+Today's date is: **[today's date will be inserted — check the current date when running this prompt]**.
 
-## Validation checklist
-- [ ] No currency balance is negative (adjust first transaction if so)
-- [ ] Conversions: source loses \`fromAmount\`, destination gains \`toAmount\`
-- [ ] \`formatBalance()\` output matches \`balance\` (comma thousands, 2 decimals)
-- [ ] Strict reverse chronological order
-- [ ] "Today"/"Yesterday" correct for current date
-- [ ] Wise Interest only on personal \`hasInterest\` currencies
+---
 
-**Note:** Data files in \`shared-resources/data/\` are shared between the web and mobile prototypes. Changes here will affect both apps.
+## Current state of the prototype
 
-Do not change any component code, styling, or page structure. Only update data files.`;
+### Consumer/Personal account
+The personal account has 4 currencies: **GBP** (£217.51), **EUR** (€233.70), **USD** ($224.79), **CAD** (C$0.00).
+
+Transactions are in \`src/data/transactions.tsx\`. The most recent transactions are dated "Today" (which was the date the prototype was last updated). The transaction dates in the file currently run from "3 February" up to "Today".
+
+**IMPORTANT: Re-dating existing transactions.** The existing "Today" and "Yesterday" transactions were written relative to the date the prototype was last built. Before adding new transactions:
+1. Work out what calendar date the existing "Today" and "Yesterday" refer to (look at surrounding dated transactions for context — e.g. if the previous date is "12 February", then "Yesterday" is likely "13 February" and "Today" is "14 February").
+2. Replace the literal \`'Today'\` and \`'Yesterday'\` strings on those existing transactions with their actual \`'DD Month'\` date (e.g. \`'14 February'\`).
+3. Then add your new transactions at the top, using \`'Today'\` and \`'Yesterday'\` relative to the **current** date.
+This ensures old transactions get pushed down the list with correct dates rather than having multiple "Today" groups.
+
+**Personal currencies with interest:**
+- GBP has \`hasInterest: true\` at 3.26% — this means it earns interest. Include periodic **"Wise Interest"** transactions (small amounts like £0.02–£0.05, using the \`<Plus size={24} />\` icon, subtitle "Added", \`isPositive: true\`). These should appear every few days.
+- EUR, USD, CAD — no interest/stocks flags. No interest transactions needed.
+
+### Business account
+The business account has 4 currencies: **GBP** (£6,841.22), **USD** ($1,888.38), **EUR** (€1,202.07), **SGD** (S$345.88).
+
+Transactions are in \`src/data/business-transactions.tsx\`. The most recent are dated "Today"/"Yesterday". Apply the same re-dating logic as personal: replace existing "Today"/"Yesterday" with their actual calendar dates, then add new transactions with "Today"/"Yesterday" relative to the current date.
+
+**Business does NOT have any currencies with interest or stocks.** Do not add any "Wise Interest" transactions to business.
+
+### Taxes account (Business only)
+Single currency: **GBP** (£5,000.00). Transactions in \`src/data/taxes-data.tsx\`. Only has one transaction currently. You can optionally add a small number of tax-related moves (e.g. moving money from current account to taxes).
+
+---
+
+## Transaction rules and patterns
+
+### Transaction types
+
+Each transaction has: \`name\`, \`amount\` (string), \`isPositive\` (boolean), \`date\` (string), \`currency\` (string), and optionally \`subtitle\`, \`icon\`, \`imgSrc\`, \`amountSub\`, \`conversion\`.
+
+1. **Spend (merchant purchase)** — money leaving the account to a business
+   - \`isPositive: false\`
+   - \`imgSrc: logoUrl('domain.com')\` — use the \`logoUrl\` helper with the merchant's real domain
+   - No icon (icon is replaced by the logo image)
+   - No subtitle for personal, \`subtitle: 'Spent by you'\` for business
+   - Amount format: \`'23.99 GBP'\` (no minus sign in the string — the \`isPositive: false\` handles display)
+   - Examples: Tesco, Amazon, Netflix, Spotify, Uber, Deliveroo, McDonald's
+
+2. **Send (person-to-person or bill payment)** — money sent to a person or company
+   - \`isPositive: false\`
+   - \`icon: <Send size={24} />\`
+   - \`subtitle: 'Sent'\` (personal) or \`subtitle: 'Sent by you'\` (business)
+   - Amount format: \`'189.93 GBP'\`
+   - Examples: HMRC, Sarah Chen, Christie Davis
+
+3. **Receive (incoming payment)** — money received from a person or company
+   - \`isPositive: true\`
+   - \`icon: <Receive size={24} />\`
+   - Amount format: \`'+ 199.66 GBP'\` (with + prefix)
+   - No subtitle typically
+   - Examples: Olivia Hartley, Berry Design, Acme Corp, salary payments
+
+4. **Add (top-up / deposit)** — money added to the account
+   - \`isPositive: true\`
+   - \`icon: <Plus size={24} />\`
+   - \`subtitle: 'Added'\` (personal) or \`subtitle: 'Added by you'\` (business)
+   - Amount format: \`'+ 500.00 GBP'\`
+
+5. **Convert (currency exchange)** — moving money between currencies
+   - \`isPositive: false\` (from the source currency's perspective on the main transaction list)
+   - \`icon: <Convert size={24} />\`
+   - \`subtitle: 'Moved'\` (personal) or \`subtitle: 'Moved by you'\` (business)
+   - \`amount: '188.00 GBP'\`, \`amountSub: '240.28 USD'\`
+   - Must include \`conversion\` object: \`{ fromCurrency: 'GBP', toCurrency: 'USD', fromAmount: '188.00 GBP', toAmount: '240.28 USD' }\`
+   - The \`currency\` field should be set to the **source** currency
+   - The \`getTransactionsForCurrency()\` function automatically shows conversions on both currency pages with correct perspective (debit on source, credit on destination)
+   - **Use realistic exchange rates** (e.g. GBP to EUR ≈ 1.17, GBP to USD ≈ 1.27, GBP to SGD ≈ 1.70)
+
+6. **Wise Interest (personal GBP only)** — interest earned
+   - \`isPositive: true\`
+   - \`icon: <Plus size={24} />\`
+   - \`name: 'Wise Interest'\`, \`subtitle: 'Added'\`
+   - Amount format: \`'+ 0.03 GBP'\` (small amounts, £0.01–£0.05)
+   - Only on personal GBP. **Never on business.**
+
+### Date format
+- Use \`'Today'\` and \`'Yesterday'\` for the two most recent days
+- Use \`'DD Month'\` format for older dates (e.g. \`'17 February'\`, \`'3 March'\`)
+- Transactions must be in **reverse chronological order** (newest first)
+- Group transactions by date with a comment showing the date and per-currency totals (see existing comments like \`// Today — GBP: +199.66 -147.30 -8.49\`)
+
+### Logo helper
+Merchant logos use: \`logoUrl('domain.com')\` which is defined as:
+\`\`\`ts
+const logoUrl = (domain: string) => \`https://img.logo.dev/\${domain}?token=\${LOGO_DEV_TOKEN}&size=64&format=png\`;
+\`\`\`
+Use real company domains. The \`LOGO_DEV_TOKEN\` is already defined in \`transactions.tsx\` and imported in \`business-transactions.tsx\`.
+
+### Realistic patterns
+- Personal: mix of small daily purchases (£2–50), occasional larger payments (£100–300), periodic receives from friends/employer, interest every few days on GBP
+- Business: client invoice payments received (£1,000–5,000), SaaS subscriptions (USD), supplier payments, occasional currency conversions, team expense purchases
+- Include transactions across multiple currencies, not just GBP
+- CAD (personal) currently has £0 balance — you may leave it empty or add a small conversion into it
+
+---
+
+## Files to update
+
+### 1. Transaction data files
+- **\`src/data/transactions.tsx\`** — First, re-date any existing "Today"/"Yesterday" strings to their actual calendar dates (e.g. \`'14 February'\`). Then add new personal transactions at the TOP of the array (newest first), using "Today" and "Yesterday" for the current date.
+- **\`src/data/business-transactions.tsx\`** — Same: re-date existing "Today"/"Yesterday", then add new business transactions at the TOP.
+- **\`src/data/taxes-data.tsx\`** — Optionally add 1–2 tax-related transactions.
+
+### 2. Currency balance files
+After adding transactions, recalculate each currency's balance by summing all credits and debits:
+- **\`src/data/currencies.ts\`** — Update \`balance\` and \`formattedBalance\` for each personal currency (GBP, EUR, USD, CAD). The \`totalAccountBalance\` is computed automatically via \`.reduce()\`.
+- **\`src/data/business-currencies.ts\`** — Update \`balance\` and \`formattedBalance\` for each business currency (GBP, USD, EUR, SGD). The \`businessTotalAccountBalance\` is computed automatically.
+- **\`src/data/taxes-data.tsx\`** — Update \`taxesTotalBalance\` and the GBP currency balance if you added transactions.
+
+### 3. Verify these display correctly (no code changes needed if totals are computed)
+- **Home page** (\`src/pages/Home.tsx\`) — \`TotalBalanceHeader\` and \`MultiCurrencyAccountCard\` use the imported balances, so they update automatically.
+- **CurrentAccount page** (\`src/pages/CurrentAccount.tsx\`) — Currency list and transaction list pull from the data files.
+- **CurrencyPage** (\`src/pages/CurrencyPage.tsx\`) — Uses \`getTransactionsForCurrency()\` to filter transactions per currency, including both sides of conversions.
+- **Insights page** (\`src/pages/Insights.tsx\`) — Computes \`totalBalance\`, \`cashBalance\`, \`totalInterestReturns\` (sum of all "Wise Interest" positive transactions), and \`spentThisMonth\` (sum of all debit non-conversion transactions). These are calculated from the data files automatically.
+
+### 4. Validation checklist
+After making changes, verify:
+- [ ] Every currency \`balance\` equals: (sum of all positive transaction amounts) minus (sum of all negative transaction amounts) for that currency, starting from the original starting balance before any transactions
+- [ ] For conversions: the source currency loses the \`fromAmount\`, the destination currency gains the \`toAmount\`
+- [ ] \`formattedBalance\` matches \`balance\` with correct formatting (comma thousands, 2 decimal places)
+- [ ] \`taxesTotalBalance\` matches the taxes GBP balance
+- [ ] Transactions are in strict reverse chronological order
+- [ ] "Today" and "Yesterday" are used for the correct dates relative to the current date
+- [ ] Wise Interest transactions only appear in personal GBP, not in business
+- [ ] All amounts use the correct currency code suffix (e.g. \`'GBP'\`, \`'USD'\`)
+- [ ] Positive amounts have \`'+ '\` prefix in the amount string, negative amounts do not have a \`'-'\` prefix (the UI handles the minus display via \`isPositive: false\`)
+
+Do not change any component code, styling, navigation, or page structure. Only update data files and balance values.`;
 
 const PROMPT_SET_ASSETS = `Enable interest or stocks on a currency in this Wise prototype.
 
-Before making changes, read:
-- **\`shared-resources/account-logic/interest-stocks.md\`** — rules, flags, affected components
-- **\`shared-resources/data/currencies.ts\`** and **\`shared-resources/data/business-currencies.ts\`** — current currency objects
+Before making changes, ask the user:
 
-Then ask the user:
+1. **Which account?** — Personal or Business? (Note: the existing prototype only shows interest/stocks features on **personal** accounts. Business accounts do not display interest rate cards, available balance lines, or diagonal flag avatars.)
 
-1. **Which account?** — Personal or Business? (Note: the rate card, available balance line, and diagonal avatar only render on personal — \`showRateCard\` requires \`accountType === 'personal'\`. Business currencies can have the data flags but the UI won't display them.)
-2. **Which currency?** — Currency code to enable (e.g. USD, EUR, CAD, SGD)
-3. **Interest, stocks, or both?** — \`hasInterest\` (rate card, interest disclaimer) / \`hasStocks\` (diagonal avatar, available balance line) / both
-4. **What interest rate?** — String like \`'4.25%'\`
-5. **Total returns?** — String like \`'+1.23 USD'\` for Insights page
+2. **Which currency?** — Which currency code should have interest or stocks enabled? (e.g. USD, EUR, CAD, SGD). Currently only **GBP** on personal has \`hasInterest: true\` at 3.26%.
+
+3. **Interest, stocks, or both?** — Ask whether the currency should have:
+   - \`hasInterest: true\` — earns interest (shows rate card, interest disclaimer, interest list item)
+   - \`hasStocks: true\` — invested in stocks (shows rate card, available balance line, diagonal avatar with Rewards icon)
+   - Both — shows all of the above
+
+4. **What interest rate?** — Ask for the rate string, e.g. \`'4.25%'\`. This appears on the InterestRateCard.
+
+5. **What are the total returns?** — A string like \`'+1.23 USD'\` shown on the Insights page.
 
 ---
 
-## Implementation
+## What changes when \`hasStocks\` or \`hasInterest\` is set
 
-Update the currency object in the data file with \`hasStocks\`, \`hasInterest\`, \`interestRate\`, \`totalReturns\`. Read the existing currency objects to match the exact field structure.
+### Data file: \`src/data/currencies.ts\` (personal) or \`src/data/business-currencies.ts\` (business)
 
-All UI changes are automatic — no component code changes needed. Read interest-stocks.md for what each flag triggers.
+Update the currency object to add:
+\`\`\`ts
+{
+  code: 'USD',
+  // ... existing fields ...
+  hasStocks: true,        // enables stocks features
+  hasInterest: true,      // enables interest features
+  interestRate: '4.25%',  // shown on the InterestRateCard
+  availableBalance: 1793.96, // not directly used — the available balance line is calculated as 95% of balance
+  totalReturns: '+1.23 USD', // shown on Insights page
+}
+\`\`\`
 
-If the currency earns interest, optionally add **Wise Interest** transactions to the transaction data file (read existing transactions to match the exact pattern). Small amounts (0.01–0.05), every few days, personal only.
+### What each flag controls (all automatic — no component changes needed):
 
-**Jar note:** Interest/stocks can be set on jar currencies, but the InterestListItem shows as "inactive" for jars (intentional — \`isJar\` flag suppresses active state).
+#### \`hasStocks: true\` triggers:
+1. **MultiCurrencyAccountCard** (\`src/components/MultiCurrencyAccountCard.tsx\`) — The currency's balance row switches from a simple flag avatar to a **diagonal AvatarLayout** (flag + Rewards icon stacked diagonally). This happens automatically via the \`cd?.hasStocks\` check.
 
-## Validation
-- [ ] Currency object has the flags set correctly
-- [ ] Rate card appears on personal currency page (mobile: above tabs, desktop: sidebar)
-- [ ] Diagonal avatar shows on Home card for \`hasStocks\` currencies
-- [ ] Wise Interest transactions only on personal \`hasInterest\` currencies
+2. **AccountPageHeader** (\`src/components/AccountPageHeader.tsx\`) — When the user navigates to that currency's page, an **"available" subheading** appears below the main balance amount showing \`"{95% of balance} {CODE} available"\` with a 16px \`?\` info button. This is passed via \`hasStocks\` and \`availableBalance\` props from CurrencyPage.
 
-**Note:** Data files in \`shared-resources/data/\` are shared between the web and mobile prototypes. Changes here will affect both apps.
+3. **CurrencyPage** (\`src/pages/CurrencyPage.tsx\`) — The \`showRateCard\` variable becomes \`true\` (it checks \`currency.hasStocks || currency.hasInterest\`). This shows:
+   - **InterestRateCard** above the segmented control on mobile, and in the sidebar on desktop
+   - **Interest disclaimer** text below the rate card
+   - The rate card and disclaimer are hidden inside the Options tab on mobile (CSS class \`currency-page__options-rate-card\`) since they're already shown above the tabs
 
-Do not change any component code or styling. Only update the currency data object and optionally add transactions.`;
+#### \`hasInterest: true\` triggers:
+1. **CurrencyPage** — Same as above: \`showRateCard\` becomes \`true\`, showing the InterestRateCard and disclaimer.
+2. **InterestListItem** in the Options tab and sidebar — Renders differently based on whether interest is active.
 
-const PROMPT_CHANGE_AMOUNTS = `Change the currencies and balances in this Wise prototype, then regenerate all transaction data to match.
+#### Both flags together:
+All of the above effects combine. The diagonal avatar, available balance line, rate card, and interest list item all appear.
 
-Before making changes, ask the user:
+### Transactions: Adding "Wise Interest" entries
+
+If the currency earns interest, add **Wise Interest** transactions to the transaction data file:
+\`\`\`tsx
+{ name: 'Wise Interest', subtitle: labels.added, amount: '+ 0.02 USD', isPositive: true, icon: <Plus size={24} />, date: '12 February', currency: 'USD' },
+\`\`\`
+- Use small amounts (0.01–0.05 in the currency)
+- Add them every few days
+- Only on **personal** accounts, never on business
+- The \`interestReturns\` on CurrencyPage is computed automatically by summing all "Wise Interest" transactions for that currency
+
+### Insights page (\`src/pages/Insights.tsx\`)
+
+The Insights page automatically computes \`totalInterestReturns\` by summing all "Wise Interest" positive transactions. If you've added Wise Interest transactions for the new currency, they'll be included automatically. The \`totalReturns\` field from the currency data is shown in the product breakdown section.
+
+### Translation keys (already exist — no changes needed)
+- \`currencyPage.available\`: "{amount} available" — shown in the AccountPageHeader
+- \`currencyPage.variableRateLabel\`: "Variable rate"
+- \`currencyPage.returnsThisMonth\`: "Returns this month"
+- \`currencyPage.disclaimerInterest\`: Interest disclaimer text
+
+### Validation checklist
+After making changes, verify:
+- [ ] The currency object in the data file has \`hasStocks\` and/or \`hasInterest\` set to \`true\`
+- [ ] \`interestRate\` is a string like \`'4.25%'\`
+- [ ] The MultiCurrencyAccountCard shows a diagonal avatar for that currency on the Home page
+- [ ] Navigating to the currency page shows the InterestRateCard (mobile: above tabs, desktop: in sidebar)
+- [ ] If \`hasStocks\`, the "available" line appears below the balance with the \`?\` button
+- [ ] Wise Interest transactions (if added) appear in the transaction list and are summed correctly
+- [ ] The Insights page reflects the updated returns
+- [ ] Business accounts are NOT affected (interest/stocks features only show when \`accountType === 'personal'\`)
+
+Do not change any component code, styling, or page structure. Only update the currency data object and optionally add Wise Interest transactions.`;
+
+const PROMPT_CHANGE_AMOUNTS = `Change the currencies and balances in this Wise prototype's accounts, then regenerate all transaction data to match.
+
+Before making any changes, ask the user the following questions:
+
+---
 
 ### Step 1: Which profile?
-Consumer/Personal, Business, or Both?
+Which profile do you want to change?
+- **Consumer/Personal**
+- **Business**
+- **Both**
 
 ### Step 2: Show current state
-Read the actual data files and list what currently exists:
-- \`shared-resources/data/currencies.ts\` — personal currencies
-- \`shared-resources/data/business-currencies.ts\` — business currencies
-- \`shared-resources/data/taxes-data.tsx\` — taxes group (business)
-- \`shared-resources/data/jar-data.tsx\` — jar accounts
+Based on the user's answer, list out what currently exists so they can see what they're changing:
 
-Present each account's currencies with code, balance, and interest/stocks flags. Always read the files fresh.
+**Consumer/Personal account** (if selected):
+Current currencies in \`src/data/currencies.ts\`:
+- **GBP** — £217.51 (British pound) — has stocks/interest enabled (\`hasStocks: true\`)
+- **EUR** — €233.70 (Euro) — has interest (\`hasInterest: true\`, rate: 2.81%)
+- **USD** — $224.79 (US dollar) — has interest (\`hasInterest: true\`, rate: 3.42%)
+- **CAD** — C$0.00 (Canadian dollar) — empty, no interest
 
-### Step 3: Display currency
-Ask about two separate settings:
-1. **Account display currency** — first currency in the array, shown as account total on cards and CurrentAccount header
-2. **Home total balance currency** — the home/locale currency for TotalBalanceHeader (can differ from account currency). This is set in PrototypeSettings via the home currency selector per profile.
+**Business account** (if selected):
+Current currencies in \`src/data/business-currencies.ts\`:
+- **GBP** — £6,841.22 (British pound)
+- **USD** — $1,888.38 (US dollar) — has interest (\`hasInterest: true\`, rate: 3.42%)
+- **EUR** — €1,202.07 (Euro) — has interest (\`hasInterest: true\`, rate: 2.81%)
+- **SGD** — S$345.88 (Singapore dollar)
 
-### Step 4: Desired currencies and amounts
-For each currency: code, desired balance, whether to keep/change interest/stocks flags. They can keep, remove, or add currencies.
+**Taxes jar** (business only, in \`src/data/taxes-data.tsx\`):
+- **GBP** — £5,000.00
 
-### Step 5: Confirm
-Show a before/after table, then implement.
+Note: these amounts may have changed since this prompt was written. Always check the actual data files for current values before presenting them to the user.
+
+### Step 3: Main display currency for each account
+Ask: **What should be the main/display currency for each account?**
+
+There are two separate currency display settings:
+
+1. **Account display currency** — the currency shown as the total on each account card and at the top of the CurrentAccount page header (e.g. "676.00 GBP"). This is the first currency in the account's currency array and is used for the \`totalAmount\` prop on \`MultiCurrencyAccountCard\` and the \`balanceFormatted\` in \`CurrentAccount.tsx\`. Currently GBP for both accounts.
+
+2. **Home total balance currency** — the currency shown in the TotalBalanceHeader at the very top of the Home page (e.g. "676.00 GBP"). This is the user's home/locale currency and represents the sum of ALL accounts converted to a single display currency. Currently hardcoded as GBP in \`Home.tsx\`. This could be different from an account's display currency.
+
+Ask the user for both:
+- "What currency should each account's total be displayed in?" (per account)
+- "What currency should the overall total balance at the top of the Home page be shown in?" (global)
+
+### Step 4: Ask for desired currencies and amounts
+Ask the user to specify their desired setup for each account. They can:
+- **Keep** existing currencies with different amounts
+- **Remove** currencies they don't want
+- **Add** new currencies (any valid currency code — make sure a flag SVG exists in \`public/flags/\` for it, or download one)
+- **Change amounts** to whatever they want
+
+For each currency they want, they should provide:
+- Currency code (e.g. GBP, USD, EUR, JPY, BRL, etc.)
+- Desired balance amount
+- Whether it should have interest/stocks enabled (optional — ask if they want to keep or change existing settings)
+
+### Step 5: Confirm and build
+Summarise the changes back to the user before implementing. Show a clear before/after table.
 
 ---
 
 ## Implementation
 
 ### 1. Update currency data files
-Read existing currency objects to match the exact field structure (\`code\`, \`name\`, \`symbol\`, \`balance\`, \`accountDetails\`, interest/stocks fields). Display formatting uses \`formatBalance()\`. Totals are computed automatically via \`.reduce()\`.
 
-If changing account display currency, reorder the array so the new main currency is **first**, then read \`CurrentAccount.tsx\` and \`Home.tsx\` to update any hardcoded currency code/symbol references.
+**\`src/data/currencies.ts\`** (personal) and/or **\`src/data/business-currencies.ts\`** (business):
 
-### 2. Regenerate transactions
-**Read the existing transaction files thoroughly** to match every pattern. Completely rewrite the transaction arrays — balances auto-compute from \`computeCurrencyBalance(code, txList)\`, so the first transaction for each currency must be an "Add" (consumer, \`icon: Plus\`) or "Receive" (business, \`icon: Receive\`) that establishes the target balance. Follow the same transaction types, icons, subtitles, logo helper, date formats, and amount formatting as existing data. Apply the realism rules from the "Update transactions" prompt: vary merchants (no brand more than twice per currency), vary amount endings (not all .99/.00), mix transaction types (card spends, sends, receives, converts, top-ups).
+For each currency in the user's list:
+- Set \`code\`, \`name\` (full currency name), \`symbol\` (currency symbol)
+- Set \`balance\` to the exact amount the user specified
+- Set \`formattedBalance\` — formatted with comma thousands and 2 decimal places, suffixed with the code (e.g. \`'1,234.56 GBP'\`)
+- Set \`accountDetails\` — generate a realistic-looking account number:
+  - GBP: sort code + account number format (\`'23-14-70 · 46839215'\`)
+  - EUR: IBAN format (\`'BE68 9670 3781 7624'\`)
+  - USD: 10-digit account number (\`'8311094826'\`)
+  - Other currencies: 10-12 digit number
+- Preserve \`hasStocks\`, \`hasInterest\`, \`interestRate\`, \`totalReturns\` if the user wants to keep them, or update as requested
 
-### 3. Update sub-accounts
-Ask if taxes group and jar accounts should also be updated.
+If adding a new currency that doesn't have a flag in \`public/flags/\`, download the SVG from the Wise CDN:
+\`https://wise.com/web-art/assets/flags/{code}.svg\` (lowercase code) and save it to \`public/flags/{code}.svg\`.
 
-### 4. Validation
-- [ ] Each currency balance computes to the requested amount (check via \`computeCurrencyBalance\`)
-- [ ] Conversions balanced on both sides
-- [ ] Reverse chronological order, "Today"/"Yesterday" correct
-- [ ] Wise Interest only on personal \`hasInterest\` currencies
-- [ ] \`npx tsc --noEmit\` passes
+The \`totalAccountBalance\` / \`businessTotalAccountBalance\` are computed automatically via \`.reduce()\` — no manual update needed.
 
-**Note:** Data files in \`shared-resources/data/\` are shared between the web and mobile prototypes. Changes here will affect both apps.
+### 2. Update display currencies
 
-Surfaces (Home, CurrentAccount, CurrencyPage, Insights, Transactions) pull from data files and update automatically. Do not change component code or styling.`;
-const PROMPT_PROJECT_CONTEXT = `You are working on a high-fidelity interactive prototype of the Wise app. This is NOT a production app — all data is hardcoded, no API calls, no backend.
+**Account display currency** (if changed from GBP):
+- **\`src/data/currencies.ts\`** / **\`src/data/business-currencies.ts\`** — reorder the currencies array so the new main currency is **first**. It appears first in all currency lists.
+- **\`src/pages/CurrentAccount.tsx\`** — The \`balanceFormatted\` variable appends \`' GBP'\` — change to the new account display currency code. Also update the currency symbol in \`totalAmount\` formatting. Update the GBP-specific interest rate check (\`c.code === 'GBP'\`) if needed.
+- **\`src/pages/Home.tsx\`** — The \`MultiCurrencyAccountCard\` \`totalAmount\` prop uses \`£\` prefix — change the symbol to match the new account display currency (e.g. \`$\`, \`€\`).
 
-## Before doing anything
+**Home total balance currency** (if changed from GBP — this is separate from the account currency):
+- **\`src/pages/Home.tsx\`** — \`TotalBalanceHeader\` has \`currency="GBP"\` — change to the new home currency code. Also update \`toLocaleString\` locale if appropriate.
+- **\`src/pages/Insights.tsx\`** — Total balance display and currency labels use GBP — update to the new home currency.
 
-**Read these docs first** — they are the authoritative reference:
+### 3. Regenerate transaction data
 
-1. **CLAUDE.md** (project root) — rules, architecture, routing, context providers, account types, i18n, assets, dependencies
-2. **\`web/design-system/\`** — read the relevant doc when working on related areas:
-   - \`components.md\` — Neptune component inventory (\`@transferwise/components\`)
-   - \`custom-components.md\` — custom components built for this prototype
-   - \`tokens.md\` — colour, typography, spacing tokens
-   - \`custom-tokens.md\` — prototype-specific extended tokens
-   - \`neptune-css.md\` — CSS utility classes
-   - \`page-structure.md\` — layout shell, responsive breakpoints
-   - \`icons.md\` — \`@transferwise/icons\` usage
-   - \`flags-and-art.md\` — flags and \`@wise/art\` illustrations
-3. **\`shared-resources/account-logic/\`** — account types, interest/stocks rules
-4. **\`src/flows/structure.md\`** — flow overlay architecture (if building flows)
+This is the most important part. **Completely rewrite** the transaction arrays so they add up to the correct final balances.
 
-## Key rules (summary — details in the docs)
+**\`src/data/transactions.tsx\`** (personal) and/or **\`src/data/business-transactions.tsx\`** (business):
 
-- **Design system first.** Always use \`@transferwise/components\` and \`@transferwise/icons\`. Never build custom equivalents.
-- **Documented tokens only.** No hardcoded hex values — use DS colour tokens and typography classes.
-- **Read before building.** Always read existing source files before modifying or creating components.
-- **Check before creating.** A component or token may already exist — check the design system docs.
-- **Shared data.** All data files live in \`shared-resources/data/\` — edit data there, not in \`src/data/\` (which contains thin re-exports). Import via \`@shared/data/\`.
-- **Translations** — all UI text through \`t()\`, keys in all 4 files (en, es, de, fr). Don't translate names, amounts, brand terms.
-- **\`@wise/art\`** for illustrations (100+ static, 13 animated 3D). Local \`Flag\` component for currency flags.
-- Run \`npx tsc --noEmit\` after changes. Test both themes and all breakpoints.`;
+For each currency, create a realistic set of transactions that sum to the target balance. The approach:
+
+1. Start with a large initial deposit (e.g. "Added" or "Received" transaction) that's larger than the final balance
+2. Add a mix of debits (purchases, sends, conversions out) and credits (receives, conversions in, interest) over the date range
+3. The net result (sum of all credits minus all debits) must equal the final balance exactly
+
+**Transaction types to use** (see existing data for examples):
+- **Spend**: \`isPositive: false\`, \`imgSrc: logoUrl('domain.com')\`, merchant purchase (Tesco, Amazon, Netflix, etc.)
+- **Send**: \`isPositive: false\`, \`icon: <Send size={24} />\`, sent to a person
+- **Receive**: \`isPositive: true\`, \`icon: <Receive size={24} />\`, received from a person/company
+- **Add**: \`isPositive: true\`, \`icon: <Plus size={24} />\`, money added/deposited
+- **Convert**: \`isPositive: false\` (source side), \`icon: <Convert size={24} />\`, with \`conversion\` object and \`amountSub\`. Use realistic exchange rates (GBP→EUR ≈ 1.17, GBP→USD ≈ 1.27)
+- **Wise Interest** (personal only, on currencies with \`hasStocks\` or \`hasInterest\`): \`isPositive: true\`, \`icon: <Plus size={24} />\`, \`name: 'Wise Interest'\`, small amounts (0.01–0.05)
+
+**Date rules:**
+- Use \`'Today'\` and \`'Yesterday'\` for the two most recent days
+- Use \`'DD Month'\` format for older dates (e.g. \`'17 February'\`)
+- Reverse chronological order (newest first)
+- Span roughly 3–4 weeks of history
+- Add date comments grouping transactions (e.g. \`// Today — GBP: +199.66 -147.30\`)
+
+**Transaction subtitle labels:**
+The \`buildTransactions()\` and \`buildBusinessTransactions()\` functions receive a \`labels\` parameter with translated subtitle strings. Use these label references:
+- \`labels.sent\` / \`labels.sentByYou\` — for sends
+- \`labels.added\` / \`labels.addedByYou\` — for adds/deposits
+- \`labels.moved\` / \`labels.movedByYou\` — for conversions
+- \`labels.spentByYou\` — for business spend
+
+**Amounts in transaction strings:**
+- Positive amounts: prefix with \`'+ '\` (e.g. \`'+ 500.00 GBP'\`)
+- Negative amounts: no prefix, no minus sign (e.g. \`'23.99 GBP'\`) — the \`isPositive: false\` flag handles the display
+
+**If currencies were removed:** delete all transactions for that currency code from the array.
+
+**If currencies were added:** create new transactions for that currency, including an initial deposit and realistic activity.
+
+### 4. Update taxes data (if business was changed)
+
+If the user changed business currencies, ask whether the **Taxes jar** (\`src/data/taxes-data.tsx\`) should also be updated. The taxes jar is a sub-account of business with its own isolated currency list and transactions.
+
+### 5. Verification checklist
+
+After making all changes, verify:
+- [ ] Each currency's \`balance\` in the data file matches the user's requested amount exactly
+- [ ] \`formattedBalance\` matches \`balance\` with correct formatting
+- [ ] Sum of all transaction credits minus debits for each currency equals that currency's final balance
+- [ ] For conversions: source currency loses \`fromAmount\`, destination gains \`toAmount\` — both sides accounted for
+- [ ] Transactions are in strict reverse chronological order
+- [ ] \`'Today'\` and \`'Yesterday'\` are used for the two most recent days
+- [ ] Wise Interest transactions only appear on personal currencies that have \`hasStocks\` or \`hasInterest\`
+- [ ] All positive amounts have \`'+ '\` prefix, negative amounts have no prefix
+- [ ] Every currency referenced in transactions exists in the currency data array
+- [ ] No transactions reference removed currencies
+- [ ] New currencies have flag SVGs in \`public/flags/\`
+- [ ] \`npx tsc --noEmit\` passes with no errors
+
+### 6. Surfaces that update automatically
+
+These surfaces pull from the data files and will update without code changes:
+- **Home page** — TotalBalanceHeader, MultiCurrencyAccountCard (currency count, balances, total)
+- **CurrentAccount page** — currency list, transaction list per currency
+- **CurrencyPage** — balance, transactions, interest rate card
+- **Insights page** — total balance, cash breakdown, spent this month, interest returns
+- **Transactions page** — full transaction list with search and filters
+
+Do not change any component code, styling, or page structure. Only update data files (currencies, transactions, taxes).`;
+const PROMPT_PROJECT_CONTEXT = `You are working on a high-fidelity interactive prototype of the Wise app. Before making any changes, read and follow this context carefully.
+
+## What this project is
+
+A React + TypeScript + Vite prototype that replicates the Wise app's top-level surfaces for both consumer (personal) and business account types. It is NOT a production app — there are no real API calls, no authentication, no backend. All data is hardcoded in local data files. The purpose is design validation and testing of UI surfaces, flows, and interactions.
+
+## What is already built
+
+### Pages (\`src/pages/\`)
+- **Home** — total balance header, action buttons (Send/Add/Request/Convert), multi-currency account cards carousel, tasks stack, notification cards, send again card, transactions preview, transfer calculator, promotion banners, rate alerts
+- **Cards** — card display with actions and limits
+- **Transactions** — full transaction list with search, date-grouped sections, filter chips (currencies)
+- **Payments** — scheduled transfers, direct debits, recurring card payments, payment requests (personal) or bills/batch/invoices/payment links (business)
+- **Recipients** — recent contacts + all recipients with search and filter chips
+- **Insights** — account summary, spending breakdown, interest returns (business only)
+- **Account** — profile, settings, navigation list items
+- **Team** — business-only team management
+- **CurrentAccount** — full account overview with 3 tabs (Currencies/Transactions/Options), currency list, transaction list
+- **CurrencyPage** — individual currency detail with 2 tabs (Transactions/Options), rate card, spotlight items, interest/stocks support
+
+### Components (\`src/components/\`)
+Key shared components: \`MultiCurrencyAccountCard\`, \`TotalBalanceHeader\`, \`ActionButtonRow\`, \`TransferCalculator\`, \`TasksStack\`, \`TaskCard\`, \`SendAgainCard\`, \`PromotionBanner\`, \`EmptyAccountCard\`, \`Flag\`, \`Illustration\`, \`TopBar\`, \`SideNav\`, \`MobileNav\`, \`PrototypeSettings\`
+
+### Data (\`src/data/\`)
+- \`currencies.ts\` — personal account currencies (GBP, EUR, USD, CAD) with balances, interest/stocks flags
+- \`business-currencies.ts\` — business account currencies (GBP, USD, EUR, SGD)
+- \`transactions.tsx\` / \`business-transactions.tsx\` — transaction arrays built by factory functions
+- \`taxes-data.tsx\` — taxes jar data (business only)
+- \`recipients.tsx\` — recipient lists for both account types
+- \`currency-rates.ts\` — 24 USD-base exchange rates
+- \`nav.tsx\` — navigation items for personal and business
+
+## Architecture
+
+### Navigation
+**No router library.** Navigation is state-driven:
+- \`activeNavItem\` — string matching English nav labels (\`'Home'\`, \`'Cards'\`, etc.) for top-level pages
+- \`subPage\` — union type for drill-down pages (CurrentAccount, CurrencyPage, etc.)
+- The \`label\` field on NavItem is the **routing key** and must stay in English. A separate \`translationKey\` drives display text.
+
+### State management
+- \`AccountType = 'personal' | 'business'\` — toggled via settings or Account page, switches all data
+- \`LanguageProvider\` — holds language, exposes \`t(key, vars?)\` for translations
+- \`PrototypeNamesProvider\` — holds editable consumer/business names
+- Prototype settings opened via gear button (bottom-right, hide with Ctrl+H)
+
+### Responsive breakpoints
+- **XL** (>=1160px): side nav, two-column layouts
+- **LG** (840-1159px): XL content layout + hamburger menu (no side nav)
+- **MD** (600-839px): single column, segmented tabs, hamburger menu
+- **SM** (<600px): bottom tab bar, compact layouts, horizontal scroll actions
+
+## What to use when building
+
+### Components — ALWAYS use the design system
+- **\`@transferwise/components\`** — Button, IconButton, ListItem, Field, Input, SelectInput, SegmentedControl, SearchInput, Badge, Drawer, Modal, Snackbar, etc. **Never build custom equivalents.**
+- **\`@transferwise/icons\`** — all iconography
+- **Local \`Flag\` component** (\`src/components/Flag.tsx\`) — for currency flags, NOT \`@wise/art\`
+- **Local \`Illustration\` component** (\`src/components/Illustration.tsx\`) — for promo illustrations
+
+### Typography — use DS classes
+\`np-text-display-title\`, \`np-text-title-section\`, \`np-text-title-body\`, \`np-text-title-group\`, \`np-text-body-default\`, \`np-text-body-small\`, \`np-text-body-large\`, etc. **Never hardcode font sizes.**
+
+### Colors — use CSS variables
+\`var(--color-content-primary)\`, \`var(--color-content-secondary)\`, \`var(--color-background-neutral)\`, \`var(--color-border-neutral)\`, \`var(--color-sentiment-positive)\`, \`var(--color-sentiment-negative)\`, \`var(--color-interactive-primary)\`, etc. **Never hardcode hex values** except for brand-specific ones documented in currency data.
+
+### Translations
+- All user-facing text must use \`t()\` from \`useLanguage()\`
+- Add keys to ALL translation files: \`en.ts\`, \`es.ts\`, \`de.ts\`, \`fr.ts\`
+- Do NOT translate: names, currency codes, amounts, brand terms ("Wise", "Wisetag")
+
+### Styling
+- Add styles to \`src/styles.css\` using BEM-like class naming
+- Follow existing responsive patterns (desktop/tablet/mobile breakpoints)
+- Use \`section-card\` class for card containers
+
+### Self-hosted assets
+- Flags: \`public/flags/{code}.svg\` (lowercase)
+- Illustrations: \`public/illustrations/\` (webp files)
+- Card images: imported via \`import.meta.url\`
+
+## Key conventions
+- Transactions are built by factory functions that accept translated labels — they update when language changes
+- Interest/stocks features are driven by boolean flags on currency objects (\`hasInterest\`, \`hasStocks\`)
+- The "jar" prop (e.g. \`'taxes'\`) creates isolated sub-accounts with own data
+- All component imports should use named exports from \`@transferwise/components\`
+- Run \`npx tsc --noEmit\` to verify no type errors after changes
+- Test in both light and dark themes, and at all three breakpoints
+
+## CLAUDE.md
+There is a detailed CLAUDE.md at the project root with full documentation. **Read it** before starting any work — it contains the authoritative reference for architecture, conventions, and known issues.`;
 
 import { useTheme } from '@wise/components-theming';
 import { usePrototypeNames } from '../context/PrototypeNames';
 import { useLanguage, type Language } from '../context/Language';
 import { currencyMeta } from '../data/currency-rates';
-import { Flag } from '@wise/art';
+import { Flag } from './Flag';
 
 export function PrototypeSettings() {
   const { isScreenModeDark, setScreenMode } = useTheme();

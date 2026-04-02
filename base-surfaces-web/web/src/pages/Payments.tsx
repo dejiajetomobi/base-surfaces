@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { ListItem, Button } from '@transferwise/components';
 import {
-  DirectDebits, RequestReceive, BillSplit, Calendar, Reload, Plus, AutoConvert, FastFlag, Upload,
+  DirectDebits, RequestReceive, BillSplit, Calendar, Reload, Plus, AutoConvert, FastFlag,
   Bills, Batch, Document, Link as LinkIcon, QrCode, ChevronDown, ShoppingBag,
 } from '@transferwise/icons';
-import { Flag } from '@wise/art';
+import { Flag } from '../components/Flag';
 import type { AccountType } from '../App';
 import { useLanguage } from '../context/Language';
 import type { TranslationKey } from '../translations/en';
@@ -71,7 +71,7 @@ function SpotlightGrid({ items }: { items: SpotlightItem[] }) {
   );
 }
 
-export function Payments({ accountType = 'personal', onSend, onRequest, onPaymentLink, onAccountDetails, onAccountDetailsList }: { accountType?: AccountType; onSend?: () => void; onRequest?: () => void; onPaymentLink?: () => void; onAccountDetails?: (code: string) => void; onAccountDetailsList?: () => void }) {
+export function Payments({ accountType = 'personal', onSend, onRequest, onPaymentLink }: { accountType?: AccountType; onSend?: () => void; onRequest?: () => void; onPaymentLink?: () => void }) {
   const { t } = useLanguage();
   const isBusiness = accountType === 'business';
   const accountDetails = isBusiness ? businessAccountDetails : personalAccountDetails;
@@ -213,22 +213,6 @@ export function Payments({ accountType = 'personal', onSend, onRequest, onPaymen
             }
             control={<ListItem.Navigation onClick={() => {}} />}
           />
-          {!isBusiness && (
-            <ListItem
-              title={<span className="np-text-body-large" style={{ fontWeight: 600 }}>{t('payments.autoTopups')}</span>}
-              subtitle={t('payments.autoTopupsSub')}
-              spotlight="inactive"
-              media={
-                <ListItem.AvatarView
-                  size={48}
-                  badge={{ icon: <Plus size={16} />, type: 'action' as const }}
-                >
-                  <Upload size={24} />
-                </ListItem.AvatarView>
-              }
-              control={<ListItem.Navigation onClick={() => {}} />}
-            />
-          )}
         </div>
       </div>
 
@@ -236,7 +220,7 @@ export function Payments({ accountType = 'personal', onSend, onRequest, onPaymen
       <div className="payments-page__section">
         <div className="section-header" style={{ margin: '0 0 12px' }}>
           <h3 className="np-text-title-subsection" style={{ margin: 0 }}>{t('common.accountDetails')}</h3>
-          <Button v2 size="sm" priority="tertiary" onClick={() => onAccountDetailsList?.()}>{t('common.seeAll')}</Button>
+          <Button v2 size="sm" priority="tertiary" onClick={() => {}}>{t('common.seeAll')}</Button>
         </div>
         <div className="payments-page__accounts-grid">
           {accountDetails.map((account) => (
@@ -250,7 +234,7 @@ export function Payments({ accountType = 'personal', onSend, onRequest, onPaymen
                   <Flag code={account.currency} />
                 </ListItem.AvatarView>
               }
-              control={<ListItem.Navigation onClick={() => onAccountDetails?.(account.currency)} />}
+              control={<ListItem.Navigation onClick={() => {}} />}
             />
           ))}
         </div>

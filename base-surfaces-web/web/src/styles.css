@@ -4,53 +4,155 @@
 /* 2. Component styles */
 @import '@transferwise/components/build/main.css';
 
-/* 3. Illustration styles */
-@import '@wise/art/dist/Illustration.css';
-
-/* 4. Base design tokens */
+/* 3. Base design tokens */
 @import '@transferwise/neptune-tokens/tokens.css';
 
-/* 5. Theme tokens */
+/* 4. Theme tokens */
 @import '@transferwise/neptune-tokens/themes/personal/tokens.css';
 @import '@transferwise/neptune-tokens/themes/personal--dark/tokens.css';
 @import '@transferwise/neptune-tokens/themes/dark/tokens.css';
 @import '@transferwise/neptune-tokens/themes/business/tokens.css';
 @import '@transferwise/neptune-tokens/themes/business--dark/tokens.css';
 
+/* ===== CRITICAL: Override Neptune CSS column-layout.css ===== */
+/*
+ * Problem: @transferwise/neptune-css/dist/css/column-layout.css contains:
+ *   .column-layout-main .container { max-width: 1176px; margin-left: 0; }
+ *
+ * This breaks our container-driven architecture. We must override it completely.
+ * Using nuclear !important to ensure our system wins.
+ */
+
+/* Kill Neptune's constraint - reset to no constraint */
+/* Use descendant selector (not >) to match Neptune's pattern and override ALL nested containers */
+div.column-layout-main div.container {
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  /* Force GPU acceleration for smooth resize */
+  will-change: max-width;
+}
+
+/* Fluid: truly full width - spans 100% of parent */
+div.column-layout-main div.container.container--fluid {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Standard: constrained & centered */
+div.column-layout-main div.container.container--standard {
+  max-width: 1160px !important;
+}
+
+/* Other variants */
+div.column-layout-main div.container.container--narrow {
+  max-width: 840px !important;
+}
+
+div.column-layout-main div.container.container--compact {
+  max-width: 600px !important;
+}
+
+/* ===== Scrollbar - Overlay Inside Container (Like Side Nav) ===== */
+
+/* Firefox - thin overlay scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+/* Chrome/Safari/Edge - overlay scrollbar */
+*::-webkit-scrollbar {
+  width: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode */
+html.np-theme-personal--dark *::-webkit-scrollbar-thumb,
+html.np-theme-dark *::-webkit-scrollbar-thumb,
+html[class*="dark"] *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+html.np-theme-personal--dark *::-webkit-scrollbar-thumb:hover,
+html.np-theme-dark *::-webkit-scrollbar-thumb:hover,
+html[class*="dark"] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
 /* ===== Body Background (dark mode support) ===== */
+
+/* ===== Shell Motion System ===== */
+
+/* Prevent transitions on page load */
+.preload * {
+  transition: none !important;
+}
+
+/* Base transition for container margins - affects all breakpoints */
+:root {
+  --transition-ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --transition-ease-in-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-duration-standard: 350ms;
+}
+
+/* Container padding transitions - smooth scaling across breakpoints */
+.container,
+.top-bar,
+.np-flow-header {
+  transition: 250ms,
+              250ms;
+}
+
+/* Sidebar Entry/Exit Motion (LG ↔ XL: 1159px ↔ 1160px) */
+
+
+/* Main content area transition - compensates for sidebar width change */
+.column-layout-main {
+  transition: margin-left var(--transition-duration-standard) var(--transition-ease-in-out);
+  will-change: margin-left;
+}
+
+/* Top bar transitions */
+.top-bar__hamburger {
+  transition: opacity var(--transition-duration-standard) var(--transition-ease-in-out),
+              width var(--transition-duration-standard) var(--transition-ease-in-out),
+              transform var(--transition-duration-standard) var(--transition-ease-in-out);
+}
+
+/* Smooth transition for elements that reflow during resize */
+.section,
+.home__carousel,
+.mca,
+.action-button-row {
+  transition: padding var(--transition-duration-standard) var(--transition-ease-out),
+              margin var(--transition-duration-standard) var(--transition-ease-out);
+}
+
+/* Disable transitions during sidebar overlay open/close (prevents conflict) */
+.sidebar-overlay--open ~ .column-layout .column-layout-left {
+  transition: none;
+}
+.sidebar-overlay--open ~ .column-layout .column-layout-left::after {
+  display: none;
+}
+
 
 body {
   background: var(--color-background-screen);
-}
-
-/* ===== Custom Typography Tokens ===== */
-
-.np-text-caption {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 400;
-  font-family: var(--font-family);
-}
-
-.np-text-caption-bold {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  font-family: var(--font-family);
-}
-
-.np-text-link-caption {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  font-family: var(--font-family);
-  color: var(--color-interactive-primary);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.np-text-link-caption:hover {
-  color: var(--color-interactive-primary-hover);
 }
 
 /* ===== Touch: suppress hover states on touch devices (prevents double-tap) ===== */
@@ -59,12 +161,9 @@ body {
     display: none !important;
   }
 }
-
-/* ===== Page Layout (matches production) ===== */
-
+/* ===== Page Layout ===== */
 .page-layout {
-  max-width: 1440px;
-  margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
   background: var(--color-background-screen);
 }
@@ -73,32 +172,107 @@ body {
   display: flex;
   width: 100%;
   min-height: 100vh;
+  overflow-x: hidden; /* Hide sidebar when it slides out */
 }
 
 .column-layout-left {
   width: 280px;
   flex-shrink: 0;
-  position: sticky;
+  position: fixed;
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  transition: margin-left var(--transition-duration-standard) var(--transition-ease-in-out);
+  will-change: margin-left;
 }
-
+/* Right border using pseudo-element - moves with sidebar */
+.column-layout-left::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border-neutral);
+  pointer-events: none;
+  z-index: 10;
+}
 .column-layout-main {
+  margin-left: 280px;
+  transition: margin-left var(--transition-duration-standard) var(--transition-ease-in-out);
   flex: 1;
   min-width: 0;
-  margin: 0 92px;
-  padding: 0 44px;
   display: flex;
   flex-direction: column;
 }
 
 .container-content {
   flex: 1;
-  padding-bottom: 64px;
+}
+
+/* ===== Container System ===== */
+/* Decouples content width/margins from shell breakpoints */
+/* Future-ready for container queries */
+
+/* Base container: responsive margins + centering via margin auto */
+.container {
+  display: block;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-margin);
+  padding-right: var(--container-margin);
+}
+
+/* Container variants: constrained containers get max-width (auto-centers) */
+.container--standard {
+  max-width: 1160px;
+}
+
+.container--narrow {
+  max-width: 840px;
+}
+
+.container--compact {
+  max-width: 600px;
+}
+
+/* Fluid container spans full width (no constraint) */
+.container--fluid {
+  max-width: none;
+}
+
+/* Responsive container margins (breakpoint-based, will migrate to container queries) */
+:root {
+  --container-margin: 16px; /* SM: <600px */
+}
+
+@media (min-width: 600px) {
+  :root {
+    --container-margin: 24px; /* MD: 600-839px */
+  }
+}
+
+@media (min-width: 840px) {
+  :root {
+    --container-margin: 32px; /* LG: 840-1159px */
+  }
+}
+
+@media (min-width: 1160px) {
+  :root {
+    --container-margin: 40px; /* XL: ≥1160px */
+  }
 }
 
 /* ===== Top Bar ===== */
+
+.column-layout-main > .container--fluid:has(.top-bar) {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-background-screen);
+}
 
 .top-bar {
   display: flex;
@@ -106,7 +280,7 @@ body {
   justify-content: flex-end;
   height: 136px;
   flex-shrink: 0;
-  padding: 0 4px 0 0;
+  padding: 0;
 }
 
 
@@ -158,11 +332,12 @@ html.np-theme-personal--dark .account-switcher svg {
 
 /* ===== Sidebar Navigation ===== */
 
+
 .nav-sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -174,8 +349,9 @@ html.np-theme-personal--dark .account-switcher svg {
 .nav-sidebar-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 135px;
+  justify-content: flex-start;
+  height: 136px;
+  padding: 0 40px;
 }
 
 .nav-sidebar-brand a {
@@ -188,7 +364,10 @@ html.np-theme-personal--dark .account-switcher svg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 32px 24px;
+  padding: 0 24px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ===== Nav Menu ===== */
@@ -199,7 +378,7 @@ html.np-theme-personal--dark .account-switcher svg {
   margin: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
 }
 
@@ -265,8 +444,8 @@ html.np-theme-personal--dark .account-switcher svg {
   flex: 1;
   width: 232px;
   height: 48px;
-  padding: 12px 16px;
-  gap: 16px;
+  padding: 12px;
+  gap: 12px;
   border-radius: 24px;
 }
 
@@ -384,14 +563,24 @@ html.np-theme-personal--dark .account-switcher svg {
 }
 
 .menu-submenu__expandable-container .generic-menu-item {
-  width: 200px;
+  width: 232px;
   min-height: 48px;
-  padding: 12px 16px;
+  padding: 12px;
   gap: 12px;
   border-radius: 0;
   font-size: 14px;
   line-height: 1.55;
   letter-spacing: -0.084px;
+}
+
+/* 16px icon in 24x24px container to center with primary nav 24px icons */
+.menu-submenu__expandable-container .icon-container-small {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-submenu__expandable-container .generic-menu-item.active {
@@ -416,8 +605,6 @@ html.np-theme-personal--dark .account-switcher svg {
   --color-background-neutral-solid: #EDF0EA;
   --color-background-neutral-solid-secondary: #E2E2E1;
   --color-mca-background: #F3F4F3;
-  --color-forest-green: #163300;
-  --color-sage-green: #CBD9C3;
 }
 
 html.np-theme-personal--dark,
@@ -425,8 +612,6 @@ html.np-theme-dark {
   --color-background-neutral-solid: #2A2C29;
   --color-background-neutral-solid-secondary: #424441;
   --color-mca-background: #2A2C29;
-  --color-forest-green: #163300;
-  --color-sage-green: #CBD9C3;
 }
 
 /* ===== Home Page Sections ===== */
@@ -530,7 +715,7 @@ html[class*="dark"] .prototype-fab--dragging {
 }
 
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .prototype-fab {
     bottom: 88px;
   }
@@ -545,7 +730,7 @@ html[class*="dark"] .prototype-fab--dragging {
 }
 
 /* Mobile: allow action buttons to scroll when they overflow */
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .action-button-row__scroll {
     overflow-x: auto;
   }
@@ -703,13 +888,31 @@ html[class*="dark"] .prototype-fab--dragging {
   }
 }
 
+
+/* Carousel responsive: fix negative margin and padding from design system */
+@media (min-width: 768px) {
+  .carousel {
+    margin: 0 !important;
+    padding: 4px 0 !important;
+  }
+}
+
+@media (max-width: 839px) {
+  .carousel {
+    gap: 0;
+    padding: 4px 0 !important;
+  }
+  .carousel__track {
+    gap: 16px;
+  }
+}
 /* ===== Multi-Currency Account Card ===== */
 
 .mca {
   background: var(--color-mca-background);
   border-radius: 26px;
   padding: 8px;
-  width: 346px;
+  width: 344px;
 }
 
 /* Dark mode: Wise logo in primary green */
@@ -959,51 +1162,6 @@ html[class*="dark"] .mca-cards__empty-card {
   flex: 1;
 }
 
-/* ===== Jar Card ===== */
-
-.jar-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.jar-card__header {
-  border-radius: 20px 20px 0 0;
-  position: relative;
-  /* Match MCA .mca-cards__stack exactly — only padding-bottom, no top padding */
-  padding-bottom: 24%;
-}
-
-.jar-card__header-content {
-  position: absolute;
-  top: 14px;
-  left: 20px;
-  right: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.jar-card__label {
-  color: #121511;
-}
-
-.jar-card__icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #121511;
-}
-
-.jar-card__front {
-  margin-top: -15px;
-  padding-top: 15px;
-  position: relative;
-  z-index: 2;
-  background: var(--color-mca-background);
-}
-
 /* ===== Transaction List — ListItem hover expansion ===== */
 
 .transactions-list {
@@ -1073,7 +1231,7 @@ html[class*="dark"] .mca-cards__empty-card {
 }
 
 /* Business: fade out transaction list items on desktop/tablet (table replaces them) */
-@media (min-width: 768px) {
+@media (min-width: 600px) {
   .home--tx-transitioning .home__tx-list--business {
     opacity: 0;
     transition: opacity 0.25s ease-out;
@@ -1846,7 +2004,7 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
 /* ===== Responsive: Hamburger Button (hidden by default) ===== */
 
 .top-bar__hamburger {
-  display: none;
+  display: flex;
 }
 
 /* ===== Responsive: Sidebar Overlay ===== */
@@ -1898,7 +2056,7 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
 /* Close wrapper: positions and fades the close button on top of scrim */
 .sidebar-overlay__close-wrapper {
   position: absolute;
-  top: 20px;
+  top: 44px;
   left: 300px;
   z-index: 2;
   width: 48px;
@@ -1999,35 +2157,37 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
   color: var(--color-content-link);
 }
 
-/* ===== Responsive: Desktop (≥992px) ===== */
+/* ===== Responsive: XL: Desktop (≥1160px) ===== */
 
-@media (min-width: 992px) {
-  .top-bar__hamburger { display: none; }
+@media (min-width: 1160px) {
+  .top-bar__hamburger { opacity: 0; visibility: hidden; pointer-events: none; width: 0; overflow: hidden; }
   .sidebar-overlay { display: none !important; }
   .mobile-nav { display: none !important; }
 }
 
-/* ===== Responsive: Small Desktop (992–1279px) ===== */
 
-@media (min-width: 992px) and (max-width: 1279px) {
-  .column-layout-main { margin: 0; padding: 0 44px; }
-}
+/* ===== Responsive: LG: Large Desktop with hamburger (840–1159px) ===== */
+/* LG-specific rules handled by shared breakpoints below */
 
-/* ===== Responsive: Tablet (768–991px) ===== */
-
-@media (max-width: 991px) {
-  .column-layout-left { display: none; }
-  .column-layout-main { margin: 0; padding: 0 44px; }
+/* ===== Responsive: MD + LG: Hide side nav, show hamburger (< 1160px) ===== */
+@media (max-width: 1159px) {
+  /* Hide side nav - slide out to the left */
+  .column-layout-left { 
+    margin-left: -280px; /* Slide out to left, keep 280px width */
+    pointer-events: none;
+  }
+  .column-layout-main { margin-left: 0; } /* Remove margin when sidebar is hidden */
   .top-bar {
     justify-content: space-between;
-    padding: 0 8px 0 0;
+    padding: 0;
   }
-  .top-bar__hamburger { display: flex; }
+  .top-bar__hamburger { opacity: 1; visibility: visible; pointer-events: auto; width: 48px; }
 }
 
-/* ===== Responsive: Mobile — Transfer Calculator stacking ===== */
+/* ===== Responsive: SM: Small/Mobile (<600px) ===== */
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
+  /* Transfer Calculator stacking */
   .transfer-calculator__body {
     flex-direction: column;
   }
@@ -2044,22 +2204,24 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
   .transfer-calculator {
     min-height: 643px;
   }
-}
 
-/* Mobile transfer calculator uses the same stacked layout as tablet */
-
-/* ===== Responsive: Mobile (<768px) ===== */
-
-@media (max-width: 767px) {
-  /* MCA cards stay 346px at all viewports — carousel handles overflow */
-  .column-layout-main { margin: 0; padding: 0 16px; }
-  .top-bar { height: 88px; justify-content: flex-end; padding: 0 4px 0 0; }
+  /* Top bar: compact mobile */
+  .top-bar {
+    height: 88px;
+    justify-content: flex-end;
+    padding: 0;
+  }
+  
+  /* Hamburger hidden, bottom tabs shown */
   .top-bar__hamburger { display: none !important; }
+  
+  /* Account switcher: avatar only */
   .account-switcher__name,
   .account-switcher .tw-icon,
   .account-switcher svg:not(.tw-avatar svg) { display: none; }
   .account-switcher { padding: 0; }
 
+  /* Mobile bottom navigation */
   .mobile-nav {
     position: fixed;
     bottom: 0;
@@ -2070,14 +2232,11 @@ html[class*="dark"] .currency-input-group__swap-btn:hover {
     display: flex;
     justify-content: center;
     background: var(--color-background-screen);
-    bottom: 0;
     padding-bottom: env(safe-area-inset-bottom);
   }
-
-  .container-content { padding-bottom: 80px; }
 }
 
-/* ===== Cards Page ===== */
+  .container-content { padding-bottom: 80px; }
 
 .cards-page {
   display: flex;
@@ -2383,7 +2542,7 @@ html.np-theme-dark .cards-travel-hub-btn .tw-icon {
 }
 
 /* Mobile: single column */
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .payments-page__grid,
   .payments-page__tools-grid {
     grid-template-columns: 1fr;
@@ -2670,6 +2829,22 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
   display: none;
 }
 
+/* Cash avatar: neutral background (light + dark) */
+.insights-page__products .wds-list-item:nth-child(1) .np-avatar-view-content.np-circle {
+  background-color: var(--color-background-neutral) !important;
+}
+
+/* Interest avatar: dark green custom color (light + dark) */
+.insights-page__products .wds-list-item:nth-child(2) .np-avatar-view-content.np-circle {
+  background-color: #163300 !important;
+  color: #CBD9C3 !important;
+}
+
+/* Stocks avatar: light green custom color (light + dark) */
+.insights-page__products .wds-list-item:nth-child(3) .np-avatar-view-content.np-circle {
+  background-color: #CBD9C3 !important;
+  color: #163300 !important;
+}
 
 /* Total returns card */
 .insights-page__returns {
@@ -2838,18 +3013,14 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
   width: 100%;
 }
 
-.transactions-page__header--business .transactions-page__search {
-  width: 276px;
-}
-
 .transactions-page__statements {
   margin-left: auto;
 }
 
 /* Small desktop: keep actions inline */
 
-/* Mobile: actions wrap below title, search stretches */
-@media (max-width: 767px) {
+/* Mobile + Tablet: actions wrap below title to prevent overflow */
+@media (max-width: 839px) {
   .transactions-page__header {
     flex-wrap: wrap;
     gap: 12px;
@@ -2916,7 +3087,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .transactions-page__table-view {
     display: none;
   }
@@ -3142,7 +3313,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
 }
 
 /* Mobile */
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .team-page__actions-row {
     flex-wrap: wrap;
     padding: 0 0 16px;
@@ -3162,14 +3333,18 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
 .top-bar__back {
   margin-right: auto;
   display: none;
+  transition: margin-left var(--transition-duration-standard) var(--transition-ease-in-out),
+              opacity var(--transition-duration-standard) var(--transition-ease-in-out);
 }
 
-/* 16px gap between hamburger and back button — only when hamburger is visible (tablet) */
-@media (min-width: 768px) and (max-width: 991px) {
+
+/* Gap between hamburger and back button when both visible (MD + LG) */
+@media (min-width: 600px) and (max-width: 1159px) {
   .top-bar__hamburger + .top-bar__back {
     margin-left: 16px;
   }
 }
+
 
 /* TopBar icons: content primary color */
 .top-bar__hamburger .tw-icon,
@@ -3192,7 +3367,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
 }
 
 /* On mobile, show back button only for Account, Transactions, Insights */
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .column-layout-main--show-back .top-bar__back,
   .column-layout-main--mobile-back .top-bar__back { display: flex; }
 }
@@ -3403,7 +3578,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
 
 /* ===== Account Page Responsive: Mobile — single column (≤767px) ===== */
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .account-page__layout {
     flex-direction: column;
   }
@@ -3533,7 +3708,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .account-header__avatar-desktop {
     display: none;
   }
@@ -3644,7 +3819,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
   padding-top: 24px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 600px) {
   .account-header__actions-desktop {
     display: flex;
     align-items: flex-start;
@@ -3664,7 +3839,7 @@ html.np-theme-personal--dark .recipients-page__chips .np-chip--selected:active {
 }
 
 /* Mobile: center the header content */
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .account-header {
     position: relative;
     padding-top: 32px;
@@ -3793,9 +3968,7 @@ html[class*="dark"] .more-menu__dropdown {
 }
 
 .currency-page__sidebar .np-circle-border::after,
-.currency-page__mobile .np-circle-border::after,
-.current-account__desktop-sidebar .np-circle-border::after,
-.current-account__mobile .np-circle-border::after {
+.currency-page__mobile .np-circle-border::after {
   display: none;
 }
 
@@ -3851,7 +4024,7 @@ html[class*="dark"] .more-menu__dropdown {
   margin-bottom: 24px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .current-account__tabs {
     margin-bottom: 32px;
   }
@@ -3866,7 +4039,7 @@ html[class*="dark"] .more-menu__dropdown {
   display: block;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 600px) {
   .current-account__desktop {
     display: flex;
     gap: 40px;
@@ -3911,7 +4084,7 @@ html[class*="dark"] .more-menu__dropdown {
   display: block;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 600px) {
   .currency-page__desktop {
     display: flex;
     gap: 40px;
@@ -3929,8 +4102,8 @@ html[class*="dark"] .more-menu__dropdown {
 }
 
 /* Sidebar spotlight ListItems — 82px total including spotlight, centered */
-.current-account__desktop-sidebar .wds-list-item,
-.current-account__mobile .wds-list-item,
+.current-account__desktop-sidebar > .wds-list-item,
+.current-account__mobile > .wds-list-item,
 .currency-page__sidebar .wds-list-item,
 .currency-page__mobile > .wds-list-item {
   min-height: 82px;
@@ -3939,8 +4112,8 @@ html[class*="dark"] .more-menu__dropdown {
   justify-content: center;
 }
 
-.current-account__desktop-sidebar .wds-list-item .wds-list-item-spotlight,
-.current-account__mobile .wds-list-item .wds-list-item-spotlight,
+.current-account__desktop-sidebar > .wds-list-item .wds-list-item-spotlight,
+.current-account__mobile > .wds-list-item .wds-list-item-spotlight,
 .currency-page__sidebar .wds-list-item-spotlight,
 .currency-page__mobile > .wds-list-item .wds-list-item-spotlight {
   display: flex;
@@ -3955,9 +4128,7 @@ html[class*="dark"] .more-menu__dropdown {
   flex-shrink: 0;
 }
 
-.currency-page__sidebar .wds-list-item-media,
-.current-account__desktop-sidebar .wds-list-item-media,
-.current-account__mobile .wds-list-item-media {
+.currency-page__sidebar .wds-list-item-media {
   align-self: center;
 }
 
@@ -4080,7 +4251,7 @@ html[class*="dark"] .more-menu__dropdown {
   overflow: hidden;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 600px) {
   .interest-rate-card {
     height: 82px;
   }
@@ -4144,7 +4315,7 @@ html[class*="dark"] .more-menu__dropdown {
 
 /* ===== Responsive ===== */
 
-@media (max-width: 767px) {
+@media (max-width: 599px) {
   .account-tab-panel__tx-header {
     flex-wrap: wrap;
   }
@@ -4170,7 +4341,7 @@ html[class*="dark"] .more-menu__dropdown {
   }
 }
 
-@media (min-width: 992px) and (max-width: 1279px) {
+@media (min-width: 840px) and (max-width: 1159px) {
   .account-tab-panel__tx-header {
     flex-wrap: wrap;
   }
@@ -4195,9 +4366,68 @@ html[class*="dark"] .more-menu__dropdown {
 /* Flow navigation: prevent flex compression and ensure consistent rendering */
 .add-money-flow .np-flow-navigation,
 .convert-flow .np-flow-navigation,
-.send-flow .np-flow-navigation {
+.send-flow .np-flow-navigation,
+.request-flow .np-flow-navigation {
   flex-shrink: 0;
 }
+
+/* FlowNavigation: match fluid container margins, 136px height, inner border with ::after */
+.add-money-flow .np-flow-navigation,
+.convert-flow .np-flow-navigation,
+.send-flow .np-flow-navigation,
+.request-flow .np-flow-navigation {
+  height: 136px;
+  position: relative;
+}
+
+/* Remove Neptune's default border (we use ::after instead) */
+.np-flow-navigation--border-bottom {
+  border-bottom: none !important;
+}
+
+/* Override Neptune's padding utility to use fluid container margins */
+.add-money-flow .np-flow-header.p-x-3,
+.convert-flow .np-flow-header.p-x-3,
+.send-flow .np-flow-header.p-x-3,
+.request-flow .np-flow-header.p-x-3 {
+  padding-left: var(--container-margin) !important;
+  padding-right: var(--container-margin) !important;
+}
+
+/* Center logo vertically in flow header */
+.add-money-flow .np-flow-header__left,
+.convert-flow .np-flow-header__left,
+.send-flow .np-flow-header__left,
+.request-flow .np-flow-header__left {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.add-money-flow .np-flow-navigation::after,
+.convert-flow .np-flow-navigation::after,
+.send-flow .np-flow-navigation::after,
+.request-flow .np-flow-navigation::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-border-neutral);
+  pointer-events: none;
+}
+
+.add-money-flow .np-flow-navigation__content,
+.convert-flow .np-flow-navigation__content,
+.send-flow .np-flow-navigation__content,
+.request-flow .np-flow-navigation__content {
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-bottom: none !important; /* Remove Neptune's border */
+}
+
+
 
 /* Center close button icon in all flows */
 .add-money-flow .np-close-button,
@@ -4222,10 +4452,8 @@ html[class*="dark"] .more-menu__dropdown {
 .add-money-flow__body {
   display: flex;
   flex-direction: column;
-  max-width: 522px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 112px 0 64px;
+  padding-top: 112px;
+  padding-bottom: 64px;
   flex: 1;
 }
 
@@ -4237,9 +4465,6 @@ html[class*="dark"] .more-menu__dropdown {
   mix-blend-mode: luminosity !important;
   opacity: 0.45 !important;
   cursor: not-allowed !important;
-}
-.add-money-flow__btn-loading .wds-Button-loader .process-circle {
-  stroke: var(--color-interactive-primary) !important;
 }
 
 /* ===== Disabled primary button: grey out across all flows ===== */
@@ -4313,7 +4538,7 @@ html[class*="dark"] .more-menu__dropdown {
   align-items: center;
   vertical-align: middle;
   color: var(--color-content-primary);
-  will-change: transform;
+  will-change: margin-left;
   transform: translateZ(0);
 }
 
@@ -4322,10 +4547,10 @@ html[class*="dark"] .more-menu__dropdown {
 }
 
 /* Mobile: keep column width until viewport is narrower than 522px + 32px */
-@media (max-width: 554px) {
+@media (max-width: 599px) {
   .add-money-flow__body {
-    max-width: none;
-    padding: 72px 16px 48px;
+    padding-top: 72px;
+    padding-bottom: 48px;
   }
 }
 
@@ -4344,10 +4569,7 @@ html[class*="dark"] .more-menu__dropdown {
 .convert-flow__body {
   display: flex;
   flex-direction: column;
-  max-width: 522px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 56px 0 64px;
+  padding: 40px 0 64px;
   flex: 1;
 }
 
@@ -4474,14 +4696,10 @@ html[class*="dark"] .more-menu__dropdown {
   opacity: 0.45 !important;
   cursor: not-allowed !important;
 }
-.convert-flow__btn-loading .wds-Button-loader .process-circle {
-  stroke: var(--color-interactive-primary) !important;
-}
 
-@media (max-width: 554px) {
+@media (max-width: 599px) {
   .convert-flow__body {
-    max-width: none;
-    padding: 56px 16px 48px;
+    padding: 40px 16px 48px;
   }
 }
 
@@ -4527,6 +4745,7 @@ html[class*="dark"] .more-menu__dropdown {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   overflow-y: auto;
   background: var(--color-background-screen);
 }
@@ -4545,17 +4764,14 @@ html[class*="dark"] .more-menu__dropdown {
 .send-flow__body {
   display: flex;
   flex-direction: column;
-  max-width: 522px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 56px 0 64px;
+  padding-top: 40px;
+  padding-bottom: 64px;
   flex: 1;
   position: relative;
 }
 
 .send-flow__body--wide {
-  max-width: 668px;
-  padding-top: 72px;
+  padding-top: 56px;
 }
 
 /* Step 1: Recipient selection */
@@ -5040,7 +5256,7 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
   flex-direction: column;
   gap: 12px;
 }
-@media (max-width: 1023px) {
+@media (max-width: 1159px) {
   .shimmer-transfer-calculator__body {
     flex-direction: column;
   }
@@ -5200,21 +5416,18 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
   opacity: 0.45 !important;
   cursor: not-allowed !important;
 }
-.send-flow__btn-loading .wds-Button-loader .process-circle {
-  stroke: var(--color-interactive-primary) !important;
-}
 
-@media (max-width: 554px) {
+@media (max-width: 599px) {
   .send-flow__body {
-    max-width: none;
-    padding: 56px 16px 48px;
+    padding-top: 40px;
+    padding-bottom: 48px;
   }
 }
 
 @media (max-width: 700px) {
   .send-flow__body--wide {
-    max-width: none;
-    padding: 56px 16px 48px;
+    padding-top: 40px;
+    padding-bottom: 48px;
   }
 }
 
@@ -5264,15 +5477,12 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
 .request-flow__body {
   display: flex;
   flex-direction: column;
-  max-width: 522px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 40px 0 64px;
+  padding-top: 40px;
+  padding-bottom: 64px;
   flex: 1;
 }
 
 .request-flow__body--wide {
-  max-width: 668px;
   padding-top: 56px;
 }
 
@@ -5332,7 +5542,7 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
   gap: 8px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 599px) {
   .request-flow__someone-else {
     flex-direction: column;
   }
@@ -5471,15 +5681,17 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
 
 .request-flow__continue {
   margin-top: 32px;
+  transition: margin-top 0.3s ease;
+}
+
+.request-flow__continue--active {
+  margin-top: 16px;
 }
 
 .request-flow__btn-loading {
   mix-blend-mode: luminosity !important;
   opacity: 0.45 !important;
   cursor: not-allowed !important;
-}
-.request-flow__btn-loading .wds-Button-loader .process-circle {
-  stroke: var(--color-interactive-primary) !important;
 }
 
 /* Hide search during step animation */
@@ -5527,16 +5739,15 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
   box-sizing: border-box !important;
 }
 
-@media (max-width: 554px) {
+@media (max-width: 599px) {
   .request-flow__body {
-    max-width: none;
-    padding: 40px 16px 48px;
+    padding-top: 40px;
+    padding-bottom: 48px;
   }
 }
 
 @media (max-width: 700px) {
   .request-flow__body--wide {
-    max-width: none;
     padding: 40px 16px 48px;
   }
 }
@@ -5563,10 +5774,7 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
 .payment-link-flow__body {
   display: flex;
   flex-direction: column;
-  max-width: 522px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 56px 0 64px;
+  padding: 40px 0 64px;
   flex: 1;
 }
 
@@ -5586,216 +5794,9 @@ html.np-theme-personal--dark .send-flow__filters .np-chip--selected:active {
   opacity: 0.45 !important;
   cursor: not-allowed !important;
 }
-.payment-link-flow__btn-loading .wds-Button-loader .process-circle {
-  stroke: var(--color-interactive-primary) !important;
-}
 
-@media (max-width: 554px) {
+@media (max-width: 599px) {
   .payment-link-flow__body {
-    max-width: none;
-    padding: 56px 16px 48px;
+    padding: 40px 16px 48px;
   }
-}
-
-/* ===== Account Details List ===== */
-
-.account-details-list {
-  width: 100%;
-}
-
-.account-details-list__items {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ===== Account Details Page ===== */
-
-.account-details-page {
-  padding-top: 8px;
-}
-
-.account-details-page__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.account-details-page__header .np-avatar-view .np-circle {
-  background: transparent !important;
-}
-
-.account-details-page__header .flag {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-}
-
-.account-details-page__receive-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-/* Desktop: two columns */
-.account-details-page__desktop {
-  display: none;
-}
-
-.account-details-page__mobile {
-  display: block;
-}
-
-@media (min-width: 768px) {
-  .account-details-page__desktop {
-    display: flex;
-    gap: 48px;
-    align-items: flex-start;
-  }
-
-  .account-details-page__mobile {
-    display: none;
-  }
-}
-
-.account-details-page__main {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Detail card (grey container) */
-.account-details__card {
-  background: var(--color-background-neutral);
-  border-radius: 24px;
-  padding: 8px 4px;
-}
-
-.account-details__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 20px;
-}
-
-.account-details__row-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.account-details__row-label {
-  color: var(--color-content-secondary);
-}
-
-.account-details__row-value {
-  font-weight: 600;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  color: var(--color-content-primary);
-}
-
-.account-details__row-helper {
-  color: var(--color-content-tertiary);
-  margin-top: 2px;
-}
-
-.account-details__copy-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--color-interactive-primary);
-  display: flex;
-  align-items: center;
-  align-self: center;
-  flex-shrink: 0;
-}
-
-/* Quick facts sidebar */
-.account-details__sidebar {
-  width: 356px;
-  flex-shrink: 0;
-}
-
-@media (max-width: 767px) {
-  .account-details__sidebar {
-    width: 100%;
-    margin-top: 32px;
-  }
-}
-
-.account-details__tabs {
-  display: flex;
-  margin-bottom: 16px;
-}
-
-.account-details__tabs .np-chip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Chip tabs use DS np-chip styles */
-
-.account-details__fee-card {
-  background: transparent;
-  border: 1px solid var(--color-border-neutral);
-  border-radius: 16px;
-  padding: 16px 20px;
-  position: relative;
-  transition: background 0.15s ease;
-}
-
-.account-details__fee-card--clickable {
-  cursor: pointer;
-}
-
-.account-details__fee-card--clickable:hover {
-  background: var(--color-background-neutral);
-}
-
-.account-details__fee-value {
-  font-weight: 600;
-  color: var(--color-content-primary);
-}
-
-.account-details__fee-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.account-details__fee-row + .account-details__fee-row {
-  margin-top: 16px;
-}
-
-.account-details__fee-chevron {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-content-secondary);
-}
-
-.account-details__availability {
-  margin-top: 24px;
-}
-
-.account-details__availability-card {
-  background: transparent;
-  border: 1px solid var(--color-border-neutral);
-  border-radius: 16px;
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.account-details__availability-card + .account-details__availability-card {
-  margin-top: 8px;
 }

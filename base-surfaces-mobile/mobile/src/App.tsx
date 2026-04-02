@@ -28,6 +28,7 @@ import { SendFlow } from './flows/SendFlow';
 import { RequestFlow } from './flows/RequestFlow';
 import { PaymentLinkFlow } from './flows/PaymentLinkFlow';
 
+import { CriticalBanner } from './components/CriticalBanner';
 import { useSwipeBack } from './hooks/useSwipeBack';
 import { currencies } from '@shared/data/currencies';
 import { businessCurrencies } from '@shared/data/business-currencies';
@@ -662,9 +663,12 @@ function AppInner() {
     <SnackbarProvider>
     <div className="page-layout">
       {import.meta.env.DEV && <Agentation />}
+      <CriticalBanner />
       <div className="column-layout-main">
+        
         <IOSTopBar name={activeName} initials={activeInitials} avatarUrl={avatarUrl} onAccountClick={handleAccountClick} showBack={showBack} onBack={handleBack} hideAccountSwitcher={activeNavItem === 'Account'} activeNavItem={activeNavItem} subPageType={subPage?.type ?? null} subPageCode={subPage?.type === 'account-details' ? subPage.code : undefined} scrollTitle={scrollTitle} accountType={accountType} onInsightsClick={() => { setShowMoreMenu(false); setTransitionDirection('push'); setPreviousNavItem(activeNavItem); setActiveNavItem('Insights'); setSubPage(null); }} onMore={() => { triggerHaptic(); setShowMoreMenu(true); }} />
         <main className="container-content" id="main" ref={mainRef}>
+          
           <PageTransition direction={transitionDirection} onComplete={() => setTransitionDirection(null)}>
             {renderContent()}
           </PageTransition>

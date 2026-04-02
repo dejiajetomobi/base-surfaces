@@ -1,0 +1,73 @@
+/* StatusIcon renders its own SentimentSurface with negative-base, override to elevated */
+.critical-banner .status-circle.wds-sentiment-surface {
+    --color-sentiment-content-primary: #FFFFFF;
+    --color-sentiment-content-primary-hover: #F5CCCC;
+    --color-sentiment-content-primary-active: #F1B7B7;
+    --color-sentiment-interactive-primary: #FBEAEA;
+    --color-sentiment-interactive-primary-hover: #F5CCCC;
+    --color-sentiment-interactive-primary-active: #F1B7B7;
+    --color-sentiment-interactive-secondary: #CB272F;
+    --color-sentiment-interactive-secondary-hover: #B8232B;
+    --color-sentiment-interactive-secondary-active: #A72027;
+    --color-sentiment-interactive-secondary-neutral: #9B141B;
+    --color-sentiment-interactive-secondary-neutral-hover: #831116;
+    --color-sentiment-interactive-secondary-neutral-active: #6D0e13;
+    --color-sentiment-interactive-control: #CB272F;
+    --color-sentiment-interactive-control-hover: #B8232B;
+    --color-sentiment-interactive-control-active: #A72027;
+    --color-sentiment-background-surface: #CB272F;
+    --color-sentiment-background-surface-hover: #B8232B;
+    --color-sentiment-background-surface-active: #A72027;
+}
+.critical-banner {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin-top: 48px;
+}
+
+.critical-banner .np-icon-button .tw-icon-cross svg {
+    display: none;
+}
+
+.critical-banner .np-icon-button .tw-icon-cross {
+    width: 16px;
+    height: 16px;
+    display: block;
+    background-color: currentColor;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='m12 9.414 7.293 7.293 1.414-1.414L12.714 7.3a1.01 1.01 0 0 0-1.428 0l-7.993 7.993 1.414 1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='m12 9.414 7.293 7.293 1.414-1.414L12.714 7.3a1.01 1.01 0 0 0-1.428 0l-7.993 7.993 1.414 1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    mask-size: contain;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+}
+
+/* Expand/collapse animation for description and action button */
+.critical-banner .wds-action-prompt__content:last-child,
+.critical-banner .wds-prompt__actions-wrapper {
+    max-height: 30vh;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 150ms cubic-bezier(0.3, 0, 0.1, 1),
+                opacity 150ms cubic-bezier(0.3, 0, 0.1, 1);
+}
+
+.critical-banner--collapsed .wds-action-prompt__content:last-child,
+.critical-banner--collapsed .wds-prompt__actions-wrapper {
+    max-height: 0;
+    opacity: 0.5;
+    transition: max-height 150ms cubic-bezier(0.9, 0, 0.7, 1),
+                opacity 150ms cubic-bezier(0.9, 0, 0.7, 1);
+}
+
+/* Rotate chevron icon when collapsed */
+.critical-banner .np-icon-button .tw-icon-cross {
+    transition: transform 150ms cubic-bezier(0.9, 0, 0.7, 1);
+}
+
+.critical-banner--collapsed .np-icon-button .tw-icon-cross {
+    transform: rotate(180deg);
+}
+
