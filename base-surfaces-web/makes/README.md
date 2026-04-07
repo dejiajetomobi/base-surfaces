@@ -10,7 +10,21 @@ Figma Make builds of the Base Surfaces Web prototype. Open `.make` files in [Fig
 
 | Version | Date | Download |
 |---------|------|----------|
+| V1.01 | 2026-04-01 | [Web V1.01.make](Web%20V1.01.make) |
 | V1.0 | 2026-03-30 | [Web V1.0.make](Web%20V1.0.make) |
+
+<details>
+<summary><strong>V1.01</strong> — Gallery lazy loading and performance optimisations</summary>
+
+• Lazy-loaded gallery iframes via IntersectionObserver — only mount when scrolled near
+• Collapsed flow steps skip iframe mounting entirely until expanded
+• Batched observer updates via requestAnimationFrame
+• Toolbar fade on scroll with Ctrl+H scroll-to-top
+• Full-width shadow on toolbar reveal
+• Active flow screen tracking in gallery (shows correct label + step)
+• Icon fix: compact segmented control icons render at size 16
+
+</details>
 
 <details>
 <summary><strong>V1.0</strong> — Initial build with bug fixes</summary>

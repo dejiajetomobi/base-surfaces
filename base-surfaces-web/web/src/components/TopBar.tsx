@@ -1,6 +1,5 @@
 import { Button, AvatarView, IconButton } from '@transferwise/components';
-import { ArrowLeft, ChevronRight, Eye, EyeShut, Menu } from '@transferwise/icons';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, ChevronRight, Menu } from '@transferwise/icons';
 import { useLanguage } from '../context/Language';
 
 export function TopBar({
@@ -23,13 +22,6 @@ export function TopBar({
   hideAccountSwitcher?: boolean;
 }) {
   const { t } = useLanguage();
-  const [specsVisible, setSpecsVisible] = useState(() => window.__specsVisible || false);
-
-  useEffect(() => {
-    const handler = (e: Event) => setSpecsVisible((e as CustomEvent<boolean>).detail);
-    window.addEventListener('specsvisibilitychange', handler);
-    return () => window.removeEventListener('specsvisibilitychange', handler);
-  }, []);
 
   return (
     <header className="top-bar">
@@ -46,17 +38,7 @@ export function TopBar({
         </div>
       )}
       <div className="top-bar__actions">
-        <div style={{ position: 'relative', zIndex: 9999 }}>
-          <Button
-            v2
-            size="sm"
-            priority="secondary-neutral"
-            onClick={() => (window as any).__toggleSpecs?.()}
-            addonStart={{ type: 'icon', value: specsVisible ? <Eye size={16} /> : <EyeShut size={16} /> }}
-          >
-            Spec
-          </Button>
-        </div>
+        <Button v2 size="sm" priority="primary">{t('topBar.earn')}</Button>
         {!hideAccountSwitcher && (
           <a href="/your-account" className="account-switcher" onClick={(e) => { e.preventDefault(); onAccountClick?.(); }}>
             {avatarUrl ? (

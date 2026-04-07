@@ -30,8 +30,7 @@ export function LiveRatesProvider({ children }: { children: ReactNode }) {
   const [rates, setRates] = useState<Rates>(fallbackRates);
 
   useEffect(() => {
-    // Disabled: live rate fetch causes visible balance shift on page load.
-    // Fallback rates are accurate enough for the prototype.
+    fetchLiveRates().then(setRates).catch(() => {});
   }, []);
 
   return (

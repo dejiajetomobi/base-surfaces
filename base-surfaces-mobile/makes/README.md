@@ -10,8 +10,22 @@ Figma Make builds of the Base Surfaces Mobile prototype. Open `.make` files in [
 
 | Version | Date | Download |
 |---------|------|----------|
+| V1.02 | 2026-04-01 | [Mobile V1.02.make](Mobile%20V1.02.make) |
 | V1.01 | 2026-03-31 | [Mobile V1.01.make](Mobile%20V1.01.make) |
 | V1.0 | 2026-03-30 | [Mobile V1.0.make](Mobile%20V1.0.make) |
+
+<details>
+<summary><strong>V1.02</strong> — Gallery lazy loading and performance optimisations</summary>
+
+• Lazy-loaded gallery iframes via IntersectionObserver — only mount when scrolled near
+• Lazy-loaded iPhone frame images — unloaded phones show lightweight outline placeholder
+• Collapsed flow steps skip iframe + frame mounting entirely until expanded
+• Batched observer updates via requestAnimationFrame
+• Active flow screen tracking in gallery (shows correct label)
+• Mobile icon replaces Phone icon in compact segmented control
+• Dark mode support for placeholders and frame outlines
+
+</details>
 
 <details>
 <summary><strong>V1.01</strong> — Fix flow buttons hidden in Make</summary>

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "description": "Wise web prototype — Make-specific overrides for base-surfaces-web",
+
+  "contentTransforms": [
+    {
+      "description": "Disable live rates fetching — no proxy in Make, keep fallback rates",
+      "match": "fetchLiveRates\\(\\)\\.then[^;]*;",
+      "replace": "/* rates fetch disabled in Make */",
+      "flags": "g",
+      "filePattern": "*.{ts,tsx,js,jsx}"
+    }
+  ],
+
+  "dataInjections": [
+    {
+      "description": "Inject fresh exchange rates from Wise API at build time",
+      "type": "fetchAndReplace",
+      "trigger": "usdBaseRates",
+      "fetchUrl": "https://wise.com/rates/live?source=USD&target=",
+      "fetchBaseValue": { "key": "USD", "value": 1.0 },
+      "fetchTargets": [
+        "AED","ARS","AUD","BDT","BRL","CAD","CHF","CNY","EUR","GBP",
+        "HUF","IDR","INR","JPY","MXN","NGN","PHP","PLN","SEK","SGD",
+        "THB","TRY","ZAR"
+      ],
+      "minSuccessCount": 10,
+      "match": "export const usdBaseRates[^=]*=\\s*\\{[^}]+\\};",
+      "template": "export const usdBaseRates: Record<string, number> = {\n${rates}\n};"
+    }
+  ]
+}

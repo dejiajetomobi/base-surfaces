@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Check } from '@transferwise/icons';
-import { Flag } from './Flag';
+import { Flag } from '@wise/art';
 import { usdBaseRates, currencyMeta } from '../data/currency-rates';
 import { useShimmer } from '../context/Shimmer';
 import { ShimmerCurrencyDropdown } from './Shimmer';
@@ -24,9 +24,10 @@ type Props = {
   selectedCode?: string;
   onSelect: (code: string) => void;
   onClose: () => void;
+  excludeCode?: string;
 };
 
-export function CurrencyDropdown({ selectedCode, onSelect, onClose }: Props) {
+export function CurrencyDropdown({ selectedCode, onSelect, onClose, excludeCode }: Props) {
   const { shimmerMode } = useShimmer();
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -50,11 +51,11 @@ export function CurrencyDropdown({ selectedCode, onSelect, onClose }: Props) {
 
   const query = search.toLowerCase();
   const filteredRecent = recentCurrencies.filter(
-    (c) => c.code.toLowerCase().includes(query) || c.name.toLowerCase().includes(query)
+    (c) => c.code !== excludeCode && (c.code.toLowerCase().includes(query) || c.name.toLowerCase().includes(query))
   );
   const recentCodes = new Set(recentCurrencies.map((c) => c.code));
   const filteredAll = allCurrencies.filter(
-    (c) => !recentCodes.has(c.code) && (c.code.toLowerCase().includes(query) || c.name.toLowerCase().includes(query))
+    (c) => c.code !== excludeCode && !recentCodes.has(c.code) && (c.code.toLowerCase().includes(query) || c.name.toLowerCase().includes(query))
   );
 
   const handleSelect = (code: string) => {

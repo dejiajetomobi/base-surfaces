@@ -344,16 +344,15 @@ export function PrototypeSettings() {
     dragState.current = { startY: 0, down: false, active: false };
   }, [dragY, closeSheet]);
 
-  // Listen for open-settings message from DeviceFrame
+  // Listen for open/close-settings messages from DeviceFrame
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'open-settings') {
-        openSheet();
-      }
+      if (e.data?.type === 'open-settings') openSheet();
+      if (e.data?.type === 'close-settings') closeSheet();
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [openSheet]);
+  }, [openSheet, closeSheet]);
 
   const currentValue = isScreenModeDark ? 'dark' : 'light';
   const [accountType, setAccountType] = useState('consumer');

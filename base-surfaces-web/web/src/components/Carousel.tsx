@@ -35,19 +35,8 @@ export function Carousel({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkOverflow();
-
-    // Debounce resize to prevent layout jitter
-    let resizeTimeout: ReturnType<typeof setTimeout>;
-    const debouncedResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(checkOverflow, 150);
-    };
-
-    window.addEventListener('resize', debouncedResize);
-    return () => {
-      window.removeEventListener('resize', debouncedResize);
-      clearTimeout(resizeTimeout);
-    };
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
   }, [checkOverflow]);
 
   useEffect(() => {

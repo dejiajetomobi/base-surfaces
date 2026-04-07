@@ -1,6 +1,6 @@
 import { Button, IconButton, AvatarView, AvatarLayout } from '@transferwise/components';
-import { Bank, ChevronRight, Money, QuestionMarkCircle } from '@transferwise/icons';
-import { Flag } from './Flag';
+import { Bank, ChevronRight, Money } from '@transferwise/icons';
+import { Flag } from '@wise/art';
 import { AccountActionButtons } from './AccountActionButtons';
 import { MoreMenu } from './MoreMenu';
 import type { AccountType } from '../App';
@@ -9,17 +9,18 @@ import { useShimmer } from '../context/Shimmer';
 import { ShimmerAccountPageHeader } from './Shimmer';
 
 type Props = {
-  type: 'account' | 'currency' | 'taxes';
+  type: 'account' | 'currency' | 'taxes' | 'jar';
   currencyCode?: string;
   label: string;
   balance: string;
-  availableBalance?: string;
-  hasStocks?: boolean;
   accountDetails?: string;
   menuItems: { label: string; onClick?: () => void }[];
   onAccountDetailsClick?: () => void;
   onBreadcrumbClick?: () => void;
   accountType?: AccountType;
+  jarColor?: string;
+  jarName?: string;
+  jarIcon?: React.ReactNode;
   hideGetPaid?: boolean;
   sendSecondary?: boolean;
   onAdd?: () => void;
@@ -42,13 +43,14 @@ export function AccountPageHeader({
   currencyCode,
   label,
   balance,
-  availableBalance,
-  hasStocks,
   accountDetails,
   menuItems,
   onAccountDetailsClick,
   onBreadcrumbClick,
   accountType = 'personal',
+  jarColor,
+  jarName,
+  jarIcon,
   hideGetPaid: hideGetPaidProp,
   sendSecondary,
   onAdd,
@@ -60,15 +62,19 @@ export function AccountPageHeader({
   const { t } = useLanguage();
   const { shimmerMode } = useShimmer();
   const isBusiness = accountType === 'business';
-  const isTaxes = type === 'taxes';
+  const isGroup = type === 'taxes';
+  const isJar = type === 'jar';
+  const isJarCurrency = type === 'currency' && !!jarColor;
   const hideGetPaid = hideGetPaidProp ?? false;
-  const wiseAvatarStyle = isTaxes
-    ? { backgroundColor: '#FFEB69', color: '#3a341c' }
-    : isBusiness
-      ? { backgroundColor: '#163300', color: '#9fe870' }
-      : { backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' };
+  const wiseAvatarStyle = (isJar || isJarCurrency) && jarColor
+    ? { backgroundColor: jarColor, color: '#121511' }
+    : isGroup
+      ? { backgroundColor: '#FFEB69', color: '#3a341c' }
+      : isBusiness
+        ? { backgroundColor: '#163300', color: '#9fe870' }
+        : { backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' };
 
-  const avatarIcon = isTaxes ? <Money size={16} /> : <WiseLogoIcon />;
+  const avatarIcon = (isJar || isJarCurrency) && jarIcon ? jarIcon : isGroup ? <Money size={16} /> : <WiseLogoIcon />;
 
   if (shimmerMode) return (
     <div className="account-header">
@@ -87,7 +93,7 @@ export function AccountPageHeader({
                 <AvatarLayout
                   size={32}
                   avatars={[
-                    { style: wiseAvatarStyle, asset: <WiseLogoIcon /> },
+                    { style: wiseAvatarStyle, asset: avatarIcon },
                     { asset: <Flag code={currencyCode} loading="eager" /> },
                   ]}
                 />
@@ -96,7 +102,7 @@ export function AccountPageHeader({
                 <AvatarLayout
                   size={48}
                   avatars={[
-                    { style: wiseAvatarStyle, asset: <WiseLogoIcon /> },
+                    { style: wiseAvatarStyle, asset: avatarIcon },
                     { asset: <Flag code={currencyCode} loading="eager" /> },
                   ]}
                 />
@@ -118,7 +124,7 @@ export function AccountPageHeader({
           )}
           {type === 'currency' ? (
             <p className="np-text-body-large account-header__breadcrumb">
-              <span className="account-header__breadcrumb-link">{t('home.currentAccount')}</span>
+              <span className="account-header__breadcrumb-link">{jarName || t('home.currentAccount')}</span>
               <span className="account-header__breadcrumb-chevron"><ChevronRight size={16} /></span>
               <span className="account-header__breadcrumb-code">{currencyCode}</span>
             </p>
@@ -135,17 +141,7 @@ export function AccountPageHeader({
       <div className="account-header__bottom-row">
         <div className="account-header__balance-group">
           <h1 className="account-header__balance">{balance}</h1>
-          {hasStocks && availableBalance && (
-            <p className="account-header__available">
-              <span className="np-text-body-default" style={{ color: 'var(--color-content-secondary)' }}>
-                {t('currencyPage.available', { amount: availableBalance })}
-              </span>
-              <button type="button" className="account-header__available-info" aria-label="What is available balance?">
-                <QuestionMarkCircle size={16} />
-              </button>
-            </p>
-          )}
-          {type !== 'taxes' && (
+          {type !== 'taxes' && type !== 'jar' && onAccountDetailsClick && (
             <div className="account-header__details">
               <Button
                 v2

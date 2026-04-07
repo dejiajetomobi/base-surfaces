@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Logo, Button, AvatarView, ExpressiveMoneyInput } from '@transferwise/components';
-import { InfoCircle, ChevronDown, Money } from '@transferwise/icons';
-import { Flag } from '../components/Flag';
+import { FlowNavigation, Logo, Button, AvatarView, ExpressiveMoneyInput } from '@transferwise/components';
+import { InfoCircle, ChevronDown, Money, Savings, Suitcase } from '@transferwise/icons';
+import { Flag } from '@wise/art';
 import { ButtonCue } from '../components/ButtonCue';
-import { FlowNavigationWithSpecs } from '../components/FlowNavigationWithSpecs';
 import { useLanguage } from '../context/Language';
 import type { AccountType } from '../App';
 
@@ -19,18 +18,28 @@ function WiseLogoIcon() {
 
 type ButtonState = 'disabled' | 'loading' | 'active';
 
+export type AccountStyle = { color: string; textColor: string; iconName: string };
+
+function resolveIcon(iconName: string) {
+  switch (iconName) {
+    case 'Savings': return <Savings size={16} />;
+    case 'Suitcase': return <Suitcase size={16} />;
+    case 'Money': return <Money size={16} />;
+    default: return <WiseLogoIcon />;
+  }
+}
+
 type Props = {
   defaultCurrency: string;
   accountLabel: string;
-  jar?: 'taxes';
+  accountStyle: AccountStyle;
   onClose: () => void;
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
-  banner?: React.ReactNode;
 };
 
-export function AddMoneyFlow({ defaultCurrency, accountLabel, jar, onClose, accountType, avatarUrl, initials, banner }: Props) {
+export function AddMoneyFlow({ defaultCurrency, accountLabel, accountStyle, onClose, accountType, avatarUrl, initials }: Props) {
   const { t } = useLanguage();
   const [amount, setAmount] = useState<number | null>(null);
   const [cueVisible, setCueVisible] = useState(false);
@@ -39,16 +48,11 @@ export function AddMoneyFlow({ defaultCurrency, accountLabel, jar, onClose, acco
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isBusiness = accountType === 'business';
-  const isTaxes = jar === 'taxes';
   const avatarStyle = isBusiness
     ? { backgroundColor: '#163300', color: '#9fe870' }
     : undefined;
-  const accountAvatarStyle = isTaxes
-    ? { backgroundColor: '#FFEB69', color: '#3a341c' }
-    : isBusiness
-      ? { backgroundColor: '#163300', color: '#9fe870' }
-      : { backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' };
-  const accountAvatarIcon = isTaxes ? <Money size={16} /> : <WiseLogoIcon />;
+  const accountAvatarStyle = { backgroundColor: accountStyle.color, color: accountStyle.textColor };
+  const accountAvatarIcon = resolveIcon(accountStyle.iconName);
 
   const steps = [
     { label: t('addMoney.amount') },
@@ -115,8 +119,7 @@ export function AddMoneyFlow({ defaultCurrency, accountLabel, jar, onClose, acco
 
   return (
     <div className="add-money-flow">
-      {banner}
-      <FlowNavigationWithSpecs
+      <FlowNavigation
         activeStep={0}
         steps={steps}
         onClose={onClose}
@@ -124,7 +127,7 @@ export function AddMoneyFlow({ defaultCurrency, accountLabel, jar, onClose, acco
         logo={<Logo />}
       />
 
-      <div className="container container--compact add-money-flow__body" ref={bodyRef}>
+      <div className="add-money-flow__body" ref={bodyRef}>
         <ExpressiveMoneyInput
           label={<span style={{ whiteSpace: 'nowrap' }}>{t('addMoney.title')} <strong>{accountLabel}</strong></span>}
           currency={defaultCurrency}

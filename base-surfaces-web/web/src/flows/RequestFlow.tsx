@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Logo, Button, AvatarView, ExpressiveMoneyInput, Chips, ListItem, InputGroup, Input, Size } from '@transferwise/components';
+import { FlowNavigation, Logo, Button, AvatarView, ExpressiveMoneyInput, Chips, ListItem, InputGroup, Input, Size } from '@transferwise/components';
 import { InfoCircle, ChevronDown, ChevronRight, Search, CrossCircleFill, GiftBox, Link, FastFlag, Money } from '@transferwise/icons';
-import { Flag } from '../components/Flag';
+import { Flag } from '@wise/art';
 import { ButtonCue } from '../components/ButtonCue';
 import { RecentContactCard } from '../components/RecentContactCard';
 import { RecipientSearchEmpty } from '../components/RecipientSearchEmpty';
-import { FlowNavigationWithSpecs } from '../components/FlowNavigationWithSpecs';
 import { useLanguage } from '../context/Language';
 import { recipients, recentContacts, getAvatarSrc, getBadge, type Recipient } from '../data/recipients';
 import type { AccountType } from '../App';
@@ -34,20 +33,22 @@ type Props = {
   accountLabel: string;
   jar?: 'taxes';
   onClose: () => void;
+  onStepChange?: (step: string) => void;
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
-  banner?: React.ReactNode;
+  startStep?: 'recipient' | 'request';
+  recipient?: RecipientInfo;
 };
 
-export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accountType, avatarUrl, initials, banner }: Props) {
+export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, onStepChange, accountType, avatarUrl, initials, startStep = 'recipient', recipient: initialRecipient }: Props) {
   const { t } = useLanguage();
 
   const isBusiness = accountType === 'business';
-  const isTaxes = jar === 'taxes';
+  const isGroup = jar === 'taxes';
 
-  const [step, setStep] = useState<'recipient' | 'request'>('recipient');
-  const [selectedRecipient, setSelectedRecipient] = useState<RecipientInfo | null>(null);
+  const [step, setStep] = useState<'recipient' | 'request'>(initialRecipient ? 'request' : startStep);
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientInfo | null>(initialRecipient ?? null);
   const [isPaymentLink, setIsPaymentLink] = useState(false);
   const [currency, setCurrency] = useState(defaultCurrency);
   const [amount, setAmount] = useState<number | null>(null);
@@ -103,7 +104,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
     </AvatarView>
   );
 
-  const accountAvatarStyle = isTaxes
+  const accountAvatarStyle = isGroup
     ? { backgroundColor: '#FFEB69', color: '#3a341c' }
     : isBusiness
       ? { backgroundColor: '#163300', color: '#9fe870' }
@@ -132,6 +133,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
     setButtonState('disabled');
     setCueVisible(false);
     setStep('request');
+    onStepChange?.('request');
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 450);
 
@@ -139,7 +141,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
       const input = bodyRef.current?.querySelector<HTMLInputElement>('.wds-expressive-money-input input');
       input?.focus();
     }, 700);
-  }, [defaultCurrency]);
+  }, [defaultCurrency, onStepChange]);
 
   // Handle "Share a payment link" click — go to simplified request step
   const handlePaymentLink = useCallback(() => {
@@ -156,6 +158,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
     setButtonState('disabled');
     setCueVisible(false);
     setStep('request');
+    onStepChange?.('request');
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 450);
 
@@ -163,7 +166,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
       const input = bodyRef.current?.querySelector<HTMLInputElement>('.wds-expressive-money-input input');
       input?.focus();
     }, 700);
-  }, [defaultCurrency]);
+  }, [defaultCurrency, onStepChange]);
 
   const handleSelectRecentContact = useCallback((contact: { name: string; subtitle: string }) => {
     const match = recipients.find((r) => r.name === contact.name && r.subtitle.includes(contact.subtitle));
@@ -238,6 +241,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
         loadingTimerRef.current = null;
       }
       setStep('recipient');
+      onStepChange?.('recipient');
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 450);
       setCueVisible(false);
@@ -264,8 +268,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
 
   return (
     <div className={`request-flow${isSearching ? ' request-flow--searching' : ''}`}>
-      {banner}
-      <FlowNavigationWithSpecs
+      <FlowNavigation
         activeStep={step === 'recipient' ? 0 : 1}
         steps={steps}
         onClose={onClose}
@@ -277,7 +280,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
       <div className={`request-flow__track${step === 'request' ? ' request-flow__track--step-request' : ''}${isAnimating ? ' request-flow__track--animating' : ''}`}>
         {/* Step 1: Recipient */}
         <div className="request-flow__panel">
-        <div className="container container--compact request-flow__body request-flow__body--wide" ref={step === 'recipient' ? bodyRef : undefined}>
+        <div className="request-flow__body request-flow__body--wide" ref={step === 'recipient' ? bodyRef : undefined}>
           <>
             {/* Title */}
             <h1 className="request-flow__title np-display np-text-display-small">{t('request.whoRequestingFrom')}</h1>
@@ -405,7 +408,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
                   })}
                 </ul>
               ) : searchQuery.trim() ? (
-                <RecipientSearchEmpty query={searchQuery.trim()} />
+                <RecipientSearchEmpty query={searchQuery.trim()} onPaymentLink={handlePaymentLink} />
               ) : null}
             </div>
           </>
@@ -414,7 +417,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
 
         {/* Step 2: Request */}
         <div className="request-flow__panel">
-        <div className="container container--compact request-flow__body" ref={step === 'request' ? bodyRef : undefined}>
+        <div className="request-flow__body" ref={step === 'request' ? bodyRef : undefined}>
           {(selectedRecipient || isPaymentLink) && (
           <>
             <ExpressiveMoneyInput
@@ -428,7 +431,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
                     <Button v2 size="md" priority="secondary-neutral" className="wds-currency-selector"
                       addonStart={{
                         type: 'avatar',
-                        value: [{ style: accountAvatarStyle, asset: isTaxes ? <Money size={16} /> : <WiseLogoIcon /> }, { asset: <Flag code={currency} loading="eager" /> }],
+                        value: [{ style: accountAvatarStyle, asset: isGroup ? <Money size={16} /> : <WiseLogoIcon /> }, { asset: <Flag code={currency} loading="eager" /> }],
                       }}
                       addonEnd={{ type: 'icon', value: <ChevronDown size={16} /> }}
                     >
@@ -503,7 +506,7 @@ export function RequestFlow({ defaultCurrency, accountLabel, jar, onClose, accou
             </div>
 
             {/* ButtonCue + Send request button */}
-            <div className={`request-flow__continue${buttonState === 'active' ? ' request-flow__continue--active' : ''}`}>
+            <div className="request-flow__continue">
               <ButtonCue
                 visible={cueVisible && buttonState === 'disabled'}
                 hint={

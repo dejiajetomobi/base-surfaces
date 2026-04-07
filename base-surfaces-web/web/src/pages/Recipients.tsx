@@ -71,16 +71,10 @@ export function Recipients({ accountType = 'personal', onSelectRecipient }: { ac
       {/* Header */}
       <div className="recipients-page__header">
         <h1 className="np-text-title-screen" style={{ margin: 0 }}>{t('recipients.title')}</h1>
-{accountType === 'business' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
             <Button v2 size="md" priority="primary" addonStart={{ type: 'icon', value: <Plus size={16} /> }} onClick={() => {}}>{t('common.add')}</Button>
             <Button v2 size="md" priority="secondary" addonStart={{ type: 'icon', value: <CameraSparkle size={16} /> }} onClick={() => {}}>{t('recipients.upload')}</Button>
           </div>
-        ) : (
-          <Button v2 size="sm" priority="primary" onClick={() => {}}>
-            <span style={{ fontSize: 16 }}>{t('recipients.addRecipient')}</span>
-          </Button>
-        )}
       </div>
 
       {/* Recent Contacts */}

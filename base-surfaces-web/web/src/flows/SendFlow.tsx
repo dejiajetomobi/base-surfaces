@@ -1,19 +1,19 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { Logo, Button, AvatarView, ExpressiveMoneyInput, Chips, ListItem, InputGroup, Input, Size } from '@transferwise/components';
-import { InfoCircle, ChevronDown, ChevronRight, Search, CrossCircleFill, Plus, CameraSparkle, Check } from '@transferwise/icons';
-import { Flag } from '../components/Flag';
+import { FlowNavigation, Logo, Button, AvatarView, ExpressiveMoneyInput, Chips, ListItem, InputGroup, Input, Size } from '@transferwise/components';
+import { InfoCircle, ChevronDown, ChevronRight, Search, CrossCircleFill, Plus, CameraSparkle, Check, Savings, Suitcase } from '@transferwise/icons';
+import { Flag } from '@wise/art';
 import { ButtonCue } from '../components/ButtonCue';
 import { RecentContactCard } from '../components/RecentContactCard';
 import { RecipientSearchEmpty } from '../components/RecipientSearchEmpty';
-import { FlowNavigationWithSpecs } from '../components/FlowNavigationWithSpecs';
 import { useLanguage } from '../context/Language';
 import { usePrototypeNames } from '../context/PrototypeNames';
 import { useLiveRates } from '../context/LiveRates';
 import { convertToHomeCurrency, currencyMeta } from '../data/currency-rates';
+import { formatBalance } from '../data/balances';
 import { recipients, businessRecipients, recentContacts, businessRecentContacts, getAvatarSrc, getBadge, type Recipient } from '../data/recipients';
 import { currencies } from '../data/currencies';
 import { businessCurrencies } from '../data/business-currencies';
-import { taxesCurrencies } from '../data/taxes-data';
+import { groupCurrencies } from '../data/taxes-data';
 import type { AccountType } from '../App';
 
 function WiseLogoIcon() {
@@ -35,11 +35,15 @@ type RecipientInfo = {
   badgeFlagCode?: string;
 };
 
+export type AccountStyle = { color: string; textColor: string; iconName: string };
+
 type Props = {
   defaultCurrency: string;
   accountLabel: string;
   jar?: 'taxes';
+  accountStyle: AccountStyle;
   onClose: () => void;
+  onStepChange?: (step: string) => void;
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
@@ -48,16 +52,15 @@ type Props = {
   prefillReceiveAmount?: number;
   startStep?: 'recipient' | 'amount';
   forcedReceiveCurrency?: string;
-  banner?: React.ReactNode;
 };
 
-export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountType, avatarUrl, initials, recipient: initialRecipient, prefillAmount, prefillReceiveAmount, startStep = 'recipient', forcedReceiveCurrency, banner }: Props) {
+export function SendFlow({ defaultCurrency, accountLabel, jar, accountStyle, onClose, onStepChange, accountType, avatarUrl, initials, recipient: initialRecipient, prefillAmount, prefillReceiveAmount, startStep = 'recipient', forcedReceiveCurrency }: Props) {
   const { t } = useLanguage();
   const { consumerName } = usePrototypeNames();
   const rates = useLiveRates();
 
   const isBusiness = accountType === 'business';
-  const isTaxes = jar === 'taxes';
+  const isGroup = jar === 'taxes';
   const avatarStyle = isBusiness
     ? { backgroundColor: '#163300', color: '#9fe870' }
     : undefined;
@@ -67,6 +70,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
   const [currency, setCurrency] = useState(initialRecipient?.badgeFlagCode ?? defaultCurrency);
   const [sendCurrency, setSendCurrency] = useState(defaultCurrency);
   const [currencyDropdownTarget, setCurrencyDropdownTarget] = useState<'send' | 'receive' | null>(null);
+  const [userOverrodeReceiveCurrency, setUserOverrodeReceiveCurrency] = useState(false);
   const [currencySearchQuery, setCurrencySearchQuery] = useState('');
   const [crossTransition, setCrossTransition] = useState<'idle' | 'shimmer' | 'revealing' | 'collapsing'>('idle');
   const reverseShimmerRef = useRef(false);
@@ -111,7 +115,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
 
   // Determine if we are in cross-currency mode
   // Compare what the user sends vs what the recipient gets
-  const recipientCurrency = forcedReceiveCurrency ?? currency;
+  const recipientCurrency = (forcedReceiveCurrency && !userOverrodeReceiveCurrency) ? forcedReceiveCurrency : currency;
   const isCrossCurrency = sendCurrency !== recipientCurrency;
   const crossRate = isCrossCurrency ? convertToHomeCurrency(1, sendCurrency, recipientCurrency, rates).toFixed(4) : '';
 
@@ -161,9 +165,9 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
   const isSearching = searchQuery.trim().length > 0;
 
   // Find balance for the sending currency
-  const allCurrencies = [...(isTaxes ? taxesCurrencies : []), ...(isBusiness ? businessCurrencies : currencies)];
+  const allCurrencies = [...(isGroup ? groupCurrencies : []), ...(isBusiness ? businessCurrencies : currencies)];
   const sendCurrencyData = allCurrencies.find((c) => c.code === sendCurrency);
-  const availableBalance = sendCurrencyData ? sendCurrencyData.formattedBalance : `0.00 ${sendCurrency}`;
+  const availableBalance = sendCurrencyData ? formatBalance(sendCurrencyData) : `0.00 ${sendCurrency}`;
 
   // Currency name for "You send" section
   const sendCurrencyName = sendCurrencyData?.name ?? sendCurrency;
@@ -176,12 +180,8 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
     </AvatarView>
   );
 
-  // Account avatar style for currency selector
-  const accountAvatarStyle = isTaxes
-    ? { backgroundColor: '#FFEB69', color: '#3a341c' }
-    : isBusiness
-      ? { backgroundColor: '#163300', color: '#9fe870' }
-      : { backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' };
+  // Account avatar style for currency selector — driven by props
+  const accountAvatarStyle = { backgroundColor: accountStyle.color, color: accountStyle.textColor };
 
   // Select a recipient and transition to amount step
   const handleSelectRecipient = useCallback((r: Recipient) => {
@@ -219,6 +219,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
     }
     setCueVisible(false);
     setStep('amount');
+    onStepChange?.('amount');
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 600);
 
@@ -465,6 +466,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
     const wasCross = sendCurrency !== recipientCurrency;
     const willBeCross = sendCurrency !== code;
 
+    setUserOverrodeReceiveCurrency(true);
     setCurrencyDropdownTarget(null);
     setCurrencySearchQuery('');
 
@@ -535,6 +537,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
       }
       // Start the slide animation
       setStep('recipient');
+      onStepChange?.('recipient');
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 600);
       setCueVisible(false);
@@ -568,8 +571,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
 
   return (
     <div className={`send-flow${isSearching ? ' send-flow--searching' : ''}`}>
-      {banner}
-      <FlowNavigationWithSpecs
+      <FlowNavigation
         activeStep={step === 'recipient' ? 0 : 1}
         steps={steps}
         onClose={onClose}
@@ -581,7 +583,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
       <div className={`send-flow__track${step === 'amount' ? ' send-flow__track--step-amount' : ''}${isAnimating ? ' send-flow__track--animating' : ''}`}>
         {/* Step 1: Recipient */}
         <div className="send-flow__panel">
-        <div className="container container--compact send-flow__body send-flow__body--wide" ref={step === 'recipient' ? bodyRef : undefined}>
+        <div className="send-flow__body send-flow__body--wide" ref={step === 'recipient' ? bodyRef : undefined}>
           <>
             {/* Title */}
             <h1 className="send-flow__title np-display np-text-display-small">{t('send.whoSendingTo')}</h1>
@@ -594,7 +596,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
 
             {/* Recents */}
             <div className="send-flow__recents-section">
-              <p className="send-flow__recents-label np-text-body-large" style={{ fontWeight: 600, margin: '0 0 8px', color: 'var(--color-content-secondary)' }}>{t('send.recents')}</p>
+              <p className="send-flow__recents-label np-text-body-large" style={{ fontWeight: 600, margin: 0, color: 'var(--color-content-secondary)' }}>{t('send.recents')}</p>
               <div className="send-flow__recents">
                 {activeRecentContacts.slice(0, 5).map((contact, i) => {
                   const isMyAccount = activeRecipients.some((r) => r.name === contact.name && r.isMyAccount);
@@ -710,7 +712,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
 
         {/* Step 2: Amount */}
         <div className="send-flow__panel">
-        <div className="container container--compact send-flow__body" ref={step === 'amount' ? bodyRef : undefined}>
+        <div className="send-flow__body" ref={step === 'amount' ? bodyRef : undefined}>
           {/* === CROSS-TOP: rate pill + send input + divider === */}
           {/* Expands from 0 height during revealing, pushing the gets input down with bounce */}
           {selectedRecipient && (crossTransition === 'revealing' || crossTransition === 'collapsing' || (isCrossCurrency && crossTransition === 'idle')) && (
@@ -798,7 +800,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
                   } else {
                     handleAmountChange(bal);
                   }
-                }}>{allCurrencies.find((c) => c.code === recipientCurrency)?.formattedBalance ?? `0.00 ${recipientCurrency}`}</button>
+                }}>{ (() => { const c = allCurrencies.find((c) => c.code === recipientCurrency); return c ? formatBalance(c) : `0.00 ${recipientCurrency}`; })() }</button>
               </p>
             )}
           </div>
@@ -888,7 +890,7 @@ export function SendFlow({ defaultCurrency, accountLabel, jar, onClose, accountT
 
           {/* Continue button — persists across all transition phases */}
           {selectedRecipient && (
-            <div className="send-flow__continue">
+            <div className="send-flow__continue" style={isCrossCurrency ? { marginTop: 40 } : undefined}>
               <ButtonCue
                 visible={cueVisible && buttonState === 'disabled' && crossTransition === 'idle'}
                 hint={

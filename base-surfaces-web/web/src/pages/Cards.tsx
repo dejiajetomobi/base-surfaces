@@ -248,7 +248,7 @@ export function Cards({ accountType = 'personal' }: { accountType?: AccountType 
         />
       ) : (
         <div className="np-section m-b-4">
-          <h5 className="np-text-title-group np-header np-header--group p-y-2" style={{ margin: 0 }}>
+          <h5 className="np-text-title-group np-header np-header--group p-y-2" style={{ margin: 0, paddingTop: 8 }}>
             {t('cards.yourCards')}
           </h5>
           <CardsList accountType={accountType} />

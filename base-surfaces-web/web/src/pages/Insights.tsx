@@ -4,19 +4,21 @@ import { Graph, Money, Rewards, QuestionMarkCircle } from '@transferwise/icons';
 import type { AccountType } from '../App';
 import { currencies } from '../data/currencies';
 import { businessCurrencies } from '../data/business-currencies';
+import { groupTotalBalance } from '../data/taxes-data';
+import { savingsJar, suppliesJar } from '../data/jar-data';
+import { computeTotalBalance } from '../data/balances';
 import { buildTransactions } from '../data/transactions';
 import { buildBusinessTransactions } from '../data/business-transactions';
 import { usePrototypeNames } from '../context/PrototypeNames';
 import { useLanguage, useTxLabels } from '../context/Language';
 import type { TranslationKey } from '../translations/en';
 import { convertToHomeCurrency, getCurrencySymbol, usdBaseRates } from '../data/currency-rates';
-import { useLiveRates } from '../context/LiveRates';
 
 export function Insights({ accountType = 'personal' }: { accountType?: AccountType }) {
   const { consumerName, businessName, consumerHomeCurrency, businessHomeCurrency } = usePrototypeNames();
   const { t } = useLanguage();
   const txLabels = useTxLabels();
-  const rates = useLiveRates();
+  const rates = usdBaseRates;
   const isBusiness = accountType === 'business';
   const homeCurrency = isBusiness ? businessHomeCurrency : consumerHomeCurrency;
   const activeCurrencies = isBusiness ? businessCurrencies : currencies;
@@ -24,22 +26,27 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
   const businessTransactions = useMemo(() => buildBusinessTransactions(consumerName, txLabels), [consumerName, txLabels]);
   const activeTransactions = isBusiness ? businessTransactions : personalTransactions;
 
-  const taxesBalance = isBusiness ? 5000 : 0;
+  const groupBalance = isBusiness ? groupTotalBalance : 0;
+  const activeJar = isBusiness ? suppliesJar : savingsJar;
+  const jarBalance = activeJar.currencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0);
 
-  const { totalBalance, cashBalance, interestBalance, hasStocks, stocksBalance, totalInterestReturns, spentThisMonth, spentLastMonth, products } = useMemo(() => {
-    const total = activeCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0) + convertToHomeCurrency(taxesBalance, 'GBP', homeCurrency, rates);
+  const { totalBalance, cashBalance, interestBalance, hasStocks, stocksBalance, totalInterestReturns, totalStocksReturns, spentThisMonth, spentLastMonth, products } = useMemo(() => {
+    const total = computeTotalBalance(accountType, homeCurrency, rates);
 
-    // Check if any currency has interest or stocks enabled
-    const gbpCurrency = activeCurrencies.find((c) => c.code === 'GBP');
-    const gbpHasStocks = gbpCurrency?.hasStocks ?? false;
-    const gbpHasInterest = gbpCurrency?.hasInterest ?? false;
-    const gbpHasAssets = gbpHasStocks || gbpHasInterest;
-    const interestInHome = gbpHasAssets ? convertToHomeCurrency(gbpCurrency?.balance ?? 0, 'GBP', homeCurrency, rates) : 0;
-    const cashInHome = activeCurrencies
-      .filter((c) => gbpHasAssets ? c.code !== 'GBP' : true)
-      .reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0);
+    // Separate currencies by mode: interest-only, stocks, and plain cash
+    const interestOnlyCurrencies = activeCurrencies.filter((c) => c.hasInterest && !c.hasStocks);
+    const stocksCurrencies = activeCurrencies.filter((c) => c.hasStocks);
+    const cashCurrencies = activeCurrencies.filter((c) => !c.hasStocks && !c.hasInterest);
+    const hasAnyAssets = interestOnlyCurrencies.length > 0 || stocksCurrencies.length > 0;
+    const hasAnyStocks = stocksCurrencies.length > 0;
+    const interestInHome = interestOnlyCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0);
+    const stocksInHome = stocksCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0);
+    const cashInHome = cashCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance, c.code, homeCurrency, rates), 0) + convertToHomeCurrency(groupBalance, 'GBP', homeCurrency, rates) + jarBalance;
 
-    const stocks = gbpHasStocks ? convertToHomeCurrency(24.75, 'GBP', homeCurrency, rates) : 0;
+
+    const stocks = hasAnyStocks
+      ? stocksCurrencies.reduce((sum, c) => sum + convertToHomeCurrency(c.balance * 0.05, c.code, homeCurrency, rates), 0)
+      : 0;
 
     // Interest returns from Wise Interest transactions — use fallback rates (historical, not live)
     const interestTxs = activeTransactions.filter((tx) => tx.name === 'Wise Interest' && tx.isPositive);
@@ -51,30 +58,49 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
       return sum + convertToHomeCurrency(amt, cur, homeCurrency, usdBaseRates);
     }, 0);
 
-    // Spending: debit transactions (not conversions, not interest adds) — use fallback rates (historical)
-    const debits = activeTransactions.filter((tx) => !tx.isPositive && !tx.conversion);
-    const spent = debits.reduce((sum, tx) => {
-      const match = tx.amount.match(/([\d,.]+)\s*(\w+)/);
+    // Stocks returns from currency totalReturns field (no transactions for actively invested funds)
+    const stocksReturns = stocksCurrencies.reduce((sum, c) => {
+      if (!c.totalReturns) return sum;
+      const match = c.totalReturns.match(/([+-]?[\d.]+)\s*(\w+)/);
       if (!match) return sum;
-      const amt = parseFloat(match[1].replace(/,/g, ''));
-      const cur = match[2];
-      return sum + convertToHomeCurrency(amt, cur, homeCurrency, usdBaseRates);
+      const amt = parseFloat(match[1]);
+      return sum + convertToHomeCurrency(amt, c.code, homeCurrency, usdBaseRates);
     }, 0);
+
+    // Spending: debit transactions (not conversions, not interest adds) — use fallback rates (historical)
+    // "This month" / "Last month" derived from the current date
+    const now = new Date();
+    const currentMonth = now.toLocaleString('en-GB', { month: 'long' });
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = prevDate.toLocaleString('en-GB', { month: 'long' });
+    const isCurrentMonth = (date: string) => date === 'Today' || date === 'Yesterday' || date.endsWith(currentMonth);
+    const isLastMonth = (date: string) => date.endsWith(lastMonth);
+    const debits = activeTransactions.filter((tx) => !tx.isPositive && !tx.conversion);
+    const sumDebits = (filter: (date: string) => boolean) =>
+      debits.filter((tx) => filter(tx.date)).reduce((sum, tx) => {
+        const match = tx.amount.match(/([\d,.]+)\s*(\w+)/);
+        if (!match) return sum;
+        const amt = parseFloat(match[1].replace(/,/g, ''));
+        const cur = match[2];
+        return sum + convertToHomeCurrency(amt, cur, homeCurrency, usdBaseRates);
+      }, 0);
+    const spent = sumDebits(isCurrentMonth);
+    const spentLast = sumDebits(isLastMonth);
 
     const prods: { key: string; titleKey: TranslationKey; subtitle: string | undefined; icon: React.ReactNode; control: 'navigation' | 'button'; value: number }[] = [
       {
         key: 'cash',
         titleKey: 'insights.cash' as TranslationKey,
-        subtitle: `${(gbpHasAssets ? cashInHome : total).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homeCurrency}`,
+        subtitle: `${(hasAnyAssets ? cashInHome : total).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homeCurrency}`,
         icon: <Money size={24} />,
         control: 'navigation' as const,
-        value: gbpHasAssets ? cashInHome : total,
+        value: hasAnyAssets ? cashInHome : total,
       },
-      // Interest: show with balance if active, otherwise show with Learn more button
-      gbpHasAssets ? {
+      // Interest: show with balance if currencies have hasInterest (not hasStocks)
+      interestOnlyCurrencies.length > 0 ? {
         key: 'interest',
         titleKey: 'insights.interest' as TranslationKey,
-        subtitle: `${interestInHome.toFixed(2)} ${homeCurrency}`,
+        subtitle: `${interestInHome.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homeCurrency}`,
         icon: <Rewards size={24} />,
         control: 'navigation' as const,
         value: interestInHome,
@@ -86,14 +112,14 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
         control: 'button' as const,
         value: 0,
       },
-      // Stocks: show with balance if active, otherwise show with Learn more button
-      gbpHasStocks ? {
+      // Stocks: show with balance if currencies have hasStocks
+      hasAnyStocks ? {
         key: 'stocks',
         titleKey: 'insights.stocks' as TranslationKey,
-        subtitle: undefined as string | undefined,
+        subtitle: `${stocksInHome.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${homeCurrency}`,
         icon: <Graph size={24} />,
         control: 'navigation' as const,
-        value: stocks,
+        value: stocksInHome,
       } : {
         key: 'stocks',
         titleKey: 'insights.stocks' as TranslationKey,
@@ -108,14 +134,15 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
       totalBalance: total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       cashBalance: cashInHome,
       interestBalance: interestInHome,
-      hasStocks: gbpHasStocks,
+      hasStocks: hasAnyStocks,
       stocksBalance: stocks,
       totalInterestReturns: interestReturns,
+      totalStocksReturns: stocksReturns,
       spentThisMonth: spent,
-      spentLastMonth: 0,
+      spentLastMonth: spentLast,
       products: prods,
     };
-  }, [activeCurrencies, activeTransactions, homeCurrency, rates]);
+  }, [activeCurrencies, activeTransactions, homeCurrency, rates, groupBalance, jarBalance, accountType]);
   const [isBalanceInfoOpen, setIsBalanceInfoOpen] = useState(false);
 
   return (
@@ -164,11 +191,11 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
               <ListItem.AvatarView
                 size={48}
                 style={
-                  product.key === 'stocks'
-                    ? { backgroundColor: '#CBD9C3', color: '#163300' }
-                    : product.key === 'interest'
-                      ? { backgroundColor: '#163300', color: '#CBD9C3' }
-                      : undefined
+                  product.key === 'interest'
+                    ? { backgroundColor: 'var(--color-forest-green)', color: 'var(--color-sage-green)' }
+                    : product.key === 'stocks'
+                      ? { backgroundColor: 'var(--color-sage-green)', color: 'var(--color-forest-green)' }
+                      : { backgroundColor: 'var(--color-background-neutral)' }
                 }
               >
                 {product.icon}
@@ -195,8 +222,8 @@ export function Insights({ accountType = 'personal' }: { accountType?: AccountTy
           </div>
           <div>
             <p className="np-text-body-default" style={{ margin: 0, color: 'var(--color-content-secondary)' }}>{t('insights.stocks')}</p>
-            <p className="np-text-title-subsection" style={{ margin: '4px 0 0' }}>
-              0.00 {homeCurrency}
+            <p className="np-text-title-subsection" style={{ margin: '4px 0 0', color: totalStocksReturns > 0 ? 'var(--color-sentiment-positive)' : undefined }}>
+              {totalStocksReturns > 0 ? '+ ' : ''}{totalStocksReturns.toFixed(2)} {homeCurrency}
             </p>
           </div>
         </div>

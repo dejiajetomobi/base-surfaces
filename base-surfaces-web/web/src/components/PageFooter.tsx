@@ -16,7 +16,7 @@ export function PageFooter() {
       <p className="np-text-body-default page-footer__description">
         {t('footer.subtitle')}
       </p>
-      <Button v2 size="sm" priority="secondary-neutral">{t('common.learnMore')}</Button>
+      <Button v2 size="sm" priority="secondary">{t('common.learnMore')}</Button>
     </div>
   );
 }

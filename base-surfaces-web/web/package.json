@@ -9,19 +9,22 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@transferwise/components": "^46.125.0",
     "@transferwise/formatting": "^2.13.5",
     "@transferwise/icons": "^4.1.0",
     "@transferwise/neptune-css": "^14.26.0",
     "@transferwise/neptune-tokens": "^8.20.3",
     "@transferwise/neptune-validation": "^3.3.3",
-    "@wise/art": "^2.27.2",
+    "@wise/art": "^2.29.0",
     "@wise/components-theming": "^1.10.1",
     "framer-motion": "^12.34.3",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^2.15.1"
+    "recharts": "^2.15.1",
+    "three": "^0.164.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",

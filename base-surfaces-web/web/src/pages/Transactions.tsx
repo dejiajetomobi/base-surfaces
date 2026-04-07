@@ -136,20 +136,11 @@ export function Transactions({ accountType = 'personal' }: { accountType?: Accou
     };
 
     updatePosition();
-
-    // Debounce resize to prevent layout jitter
-    let resizeTimeout: ReturnType<typeof setTimeout>;
-    const debouncedResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(updatePosition, 150);
-    };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', debouncedResize);
+    window.addEventListener('resize', updatePosition);
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', debouncedResize);
-      clearTimeout(resizeTimeout);
+      window.removeEventListener('resize', updatePosition);
     };
   }, []);
 

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Button, ListItem, AvatarLayout } from '@transferwise/components';
 import { Bank, ChevronRight, Rewards } from '@transferwise/icons';
-import { Flag } from './Flag';
+import { Flag } from '@wise/art';
 import { currencies as defaultCurrencyData, type CurrencyData } from '../data/currencies';
 import { useLanguage } from '../context/Language';
 import { useShimmer } from '../context/Shimmer';
@@ -38,6 +38,7 @@ type Props = {
   hideAccountDetails?: boolean;
   cardInfoLight?: boolean;
   businessCardStyle?: boolean;
+  onAccountDetails?: () => void;
 };
 
 export function MultiCurrencyAccountCard({
@@ -56,6 +57,7 @@ export function MultiCurrencyAccountCard({
   hideAccountDetails = false,
   cardInfoLight = false,
   businessCardStyle = false,
+  onAccountDetails,
 }: Props) {
   const { t } = useLanguage();
   const { shimmerMode } = useShimmer();
@@ -121,31 +123,29 @@ export function MultiCurrencyAccountCard({
       )}
 
       <div className="mca-front">
-        {hasCards && (
-          <div className="mca-front__cutout">
-            <svg width="330" height="16" viewBox="0 0 330 16" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-              <g clipPath="url(#cutout-clip)">
-                <path d="M322 0C326.418 0 330 3.58172 330 8C330 12.4183 326.418 16 322 16H8C3.58172 16 0 12.4183 0 8C2.49657e-07 3.58172 3.58172 0 8 0H126.806C134.929 0 142.144 4.72959 148.943 9.1743C153.622 12.2329 159.148 14 165.067 14C170.987 13.9999 176.513 12.2328 181.191 9.17433C187.99 4.72955 195.204 0 203.327 0H322Z" fill="currentColor" />
-                <rect width="16" height="16" fill="currentColor" />
-                <rect width="16" height="16" x="314" fill="currentColor" />
-              </g>
-              <defs>
-                <clipPath id="cutout-clip">
-                  <rect width="330" height="16" fill="white" />
-                </clipPath>
-              </defs>
-            </svg>
-          </div>
-        )}
+        <div className="mca-front__cutout">
+          <svg width="330" height="16" viewBox="0 0 330 16" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <g clipPath="url(#cutout-clip)">
+              <path d="M322 0C326.418 0 330 3.58172 330 8C330 12.4183 326.418 16 322 16H8C3.58172 16 0 12.4183 0 8C2.49657e-07 3.58172 3.58172 0 8 0H126.806C134.929 0 142.144 4.72959 148.943 9.1743C153.622 12.2329 159.148 14 165.067 14C170.987 13.9999 176.513 12.2328 181.191 9.17433C187.99 4.72955 195.204 0 203.327 0H322Z" fill="currentColor" />
+              <rect width="16" height="16" fill="currentColor" />
+              <rect width="16" height="16" x="314" fill="currentColor" />
+            </g>
+            <defs>
+              <clipPath id="cutout-clip">
+                <rect width="330" height="16" fill="white" />
+              </clipPath>
+            </defs>
+          </svg>
+        </div>
 
         <ul className="wds-list list-unstyled m-y-0">
           <ListItem
             title={<h3 className="np-text-title-subsection" style={{ margin: 0 }}>{title}</h3>}
-            subtitle={
+            subtitle={currencyCount >= 2 ? (
               <div className="np-text-body-large">
                 {totalAmount}&nbsp;· {currencyCount} {t('accountCard.currency', { count: currencyCount })}
               </div>
-            }
+            ) : undefined}
             control={<ListItem.Navigation onClick={() => onNavigateAccount?.()} />}
           />
         </ul>
@@ -187,6 +187,7 @@ export function MultiCurrencyAccountCard({
               size="sm"
               priority="secondary-neutral"
               addonStart={{ type: 'icon', value: <Bank size={16} /> }}
+              onClick={onAccountDetails}
             >
               {t('common.accountDetails')}
             </Button>

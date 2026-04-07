@@ -2,7 +2,7 @@
 
 Base Surfaces Beta
 =======
-Base Surfaces is a repo for Wise Design. It allows designers to fork pixel-perfect skeletons of the Wise Web and Mobile apps, with built-in logic to use Claude to prototype with. Included are key surfaces that designers work with on a daily basis, giving them access to explore more immersive experiences for Wise customers. **It's a 99% replica of Wise's top-level surfaces.**
+Base Surfaces is a repo for Wise Design. It allows designers to clone pixel-perfect skeletons of the Wise Web and Mobile apps, with built-in logic to use Claude to prototype with. Included are key surfaces that designers work with on a daily basis, giving them access to explore more immersive experiences for Wise customers. **It's a 99% replica of Wise's top-level surfaces.**
 
 
 Make Builds
@@ -13,7 +13,7 @@ Interactive prototypes you can open in Figma — no local setup needed.
 | | Latest | Download |
 |--|--------|----------|
 | **Web** | V1.0 | [Web V1.0.make](base-surfaces-web/makes/Web%20V1.0.make) |
-| **Mobile** | V1.0 | [Mobile V1.0.make](base-surfaces-mobile/makes/Mobile%20V1.0.make) |
+| **Mobile** | V1.01 | [Mobile V1.01.make](base-surfaces-mobile/makes/Mobile%20V1.01.make) |
 
 **Figma project:** [Base Surfaces — Make Builds](https://www.figma.com/files/826948582432925732/project/579451617?fuid=1009076293124464990)
 
@@ -43,20 +43,20 @@ The following logic is built, to give you an easier time in building your protot
 How This Repo Works
 -----------
 
-`connnberry/base-surfaces` is the source of truth. You fork it, then create branches for each prototype.
+`transferwise/base-surfaces` is the source of truth. You clone it, push it to your own GitHub repo, then create branches for each prototype.
 
 ```
-connnberry/base-surfaces        (source of truth)
+transferwise/base-surfaces          (source of truth)
         |
-        v  fork
-your-name/base-surfaces-xxx    (your fork)
+        v  clone + push to your own repo
+your-name/my-base-surfaces         (your copy)
         |
-        +-- branch-1            (prototype A)
-        +-- branch-2            (prototype B)
-        +-- branch-3            (prototype C)
+        +-- branch-1                (prototype A)
+        +-- branch-2                (prototype B)
+        +-- branch-3                (prototype C)
 ```
 
-**The golden rule: keep `main` clean.** Never commit directly to main on your fork. This keeps "Sync fork" safe — it only resets main, which is just a mirror of the upstream. Your prototype branches are untouched.
+**The golden rule: keep `main` clean.** Never commit directly to main on your copy. This makes it easy to pull in future updates from the source repo. Your prototype branches are untouched.
 
 ### Repo structure
 
@@ -112,6 +112,11 @@ These make Claude much more capable inside the project:
 
 * **Figma MCP** — lets Claude read Figma designs directly. Very useful for pulling design references, brand images, and card assets.
 * **GitHub MCP** — lets Claude push code, create branches, and manage your repos.
+* **Wise Design System (Storybook) MCP** — lets Claude access Neptune component documentation, props, and usage examples directly. Install it by pasting this into Claude Code:
+
+```
+claude mcp add --transport http --client-id cdf3737dff9d485485968e50b63fd8b4 wise-design-system https://storybook.wise.design/mcp --scope project
+```
 
 Set these up inside Claude Code's MCP settings.
 
@@ -119,23 +124,33 @@ Set these up inside Claude Code's MCP settings.
 Getting Started
 -----------
 
-### 1. Fork this repo
+### 1. Clone this repo
 
-Click **Fork** at the top of this page to create your own copy. Forking keeps a link back to this repo, so you can pull in future updates as Base Surfaces evolves — new screens, components, logic, and fixes.
+Open your terminal and run:
 
-### 2. Clone your fork
-
-Open Claude Code and paste:
-
-```
-Clone my fork of base-surfaces from GitHub and open it
+```bash
+git clone https://github.com/transferwise/base-surfaces.git
+cd base-surfaces
 ```
 
-Claude will clone the repo and set up your working directory.
+### 2. Push to your own GitHub repo
+
+Create a new repo under your own GitHub account (e.g. `your-name/my-base-surfaces`), then point your local clone at it:
+
+```bash
+git remote set-url origin https://github.com/your-name/my-base-surfaces.git
+git push -u origin main
+```
+
+This gives you your own copy to work in. To pull future updates from the source repo, add it as an upstream remote:
+
+```bash
+git remote add upstream https://github.com/transferwise/base-surfaces.git
+```
 
 ### 3. Run a prototype
 
-Tell Claude which one you want to work on:
+Open Claude Code in your project directory and tell it which prototype you want to work on:
 
 ```
 Install and run the web prototype
@@ -157,11 +172,22 @@ Do all your work on this branch. Ask Claude to commit and push when you're ready
 
 ### 5. Getting updates from base-surfaces
 
-When new components or features are added to base-surfaces, you can pull them into your fork:
+When new components or features are added to base-surfaces, you can pull them into your copy:
 
-1. Go to your fork on GitHub
-2. Click **"Sync fork"** on the main branch — this is safe because you have no commits on main
-3. Ask Claude:
+```bash
+git checkout main
+git pull upstream main
+git push origin main
+```
+
+Then merge the updates into your prototype branch:
+
+```bash
+git checkout my-prototype-branch
+git merge main
+```
+
+Or ask Claude:
 
 ```
 Pull the latest updates from main and merge them into my current branch

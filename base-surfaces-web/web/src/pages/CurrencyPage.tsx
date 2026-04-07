@@ -1,23 +1,27 @@
 import { useState, useMemo } from 'react';
-import { Download, Slider, UpwardGraph, AutoConvert, Link as LinkIcon, ChevronRight } from '@transferwise/icons';
+import { Download, Slider, UpwardGraph, Graph, AutoConvert, Link as LinkIcon, ChevronRight, QuestionMarkCircle, Savings, Suitcase, Money } from '@transferwise/icons';
 import { Button, ListItem, SearchInput, Size, SegmentedControl } from '@transferwise/components';
 import type { AccountType } from '../App';
 import { AccountPageHeader } from '../components/AccountPageHeader';
 import { ActivitySummary } from '../components/ActivitySummary';
 import { currencies, type CurrencyData } from '../data/currencies';
+import { formatBalance } from '../data/balances';
 import { businessCurrencies } from '../data/business-currencies';
 import { buildTransactions, getTransactionsForCurrency, groupByDate, type Transaction } from '../data/transactions';
 import { buildBusinessTransactions } from '../data/business-transactions';
 import { usePrototypeNames } from '../context/PrototypeNames';
 import { useLanguage, useTxLabels } from '../context/Language';
 
-import { taxesCurrencies, taxesTransactions } from '../data/taxes-data';
+import { groupCurrencies, groupTransactions } from '../data/taxes-data';
+import type { JarDefinition } from '../data/jar-data';
 
 type Props = {
   code: string;
   onNavigateAccount?: () => void;
+  onAccountDetails?: () => void;
   accountType?: AccountType;
-  jar?: 'taxes';
+  jar?: string;
+  jarConfig?: JarDefinition;
   onAdd?: () => void;
   onConvert?: () => void;
   onSend?: () => void;
@@ -93,20 +97,21 @@ function TransactionsSection({ currency, isMobile, txList }: { currency: Currenc
   );
 }
 
-function InterestListItem({ currency, accountType = 'personal' }: { currency: CurrencyData; accountType?: AccountType }) {
+function InterestListItem({ currency, accountType = 'personal', isJar = false }: { currency: CurrencyData; accountType?: AccountType; isJar?: boolean }) {
   const { t } = useLanguage();
-  const isActive = (currency.code === 'GBP' && accountType === 'personal') || currency.hasInterest;
+  const isStocks = currency.hasStocks;
+  const isActive = !isJar && (isStocks || (currency.code === 'GBP' && accountType === 'personal') || currency.hasInterest);
   return (
     <ListItem
       spotlight={isActive ? 'active' : 'inactive'}
-      title={isActive ? t('currencyPage.interestActive') : t('currencyPage.earnReturn')}
-      subtitle={isActive ? t('currencyPage.variableRate') : t('currencyPage.exploreGrow')}
+      title={isStocks ? t('currencyPage.stocksActive') : isActive ? t('currencyPage.interestActive') : t('currencyPage.earnReturn')}
+      subtitle={isStocks ? t('currencyPage.stocksIndex') : isActive ? t('currencyPage.variableRate') : t('currencyPage.exploreGrow')}
       media={
         <ListItem.AvatarView size={48} style={isActive
           ? { backgroundColor: '#9fe870', border: 'none', color: '#163300' }
           : { backgroundColor: 'var(--color-background-neutral)', border: 'none' }
         }>
-          <UpwardGraph size={24} />
+          {isStocks ? <Graph size={24} /> : <UpwardGraph size={24} />}
         </ListItem.AvatarView>
       }
       control={<ListItem.Navigation onClick={() => {}} />}
@@ -116,6 +121,7 @@ function InterestListItem({ currency, accountType = 'personal' }: { currency: Cu
 
 function InterestRateCard({ currency, interestReturns }: { currency: CurrencyData; interestReturns?: number }) {
   const { t } = useLanguage();
+  const isStocks = currency.hasStocks;
   const rate = currency.interestRate ?? '3.26%';
   const returnsValue = interestReturns ?? 0;
   const returns = returnsValue > 0
@@ -128,6 +134,31 @@ function InterestRateCard({ currency, interestReturns }: { currency: CurrencyDat
     : isNegativeReturn
       ? 'var(--color-sentiment-negative)'
       : undefined;
+
+  if (isStocks) {
+    const availableBalance = (currency.balance * 0.95).toFixed(2);
+    const totalReturns = currency.totalReturns ?? `${returnsValue.toFixed(2)} ${currency.code}`;
+    const totalReturnsColor = totalReturns.startsWith('+') ? 'var(--color-sentiment-positive)' : undefined;
+    return (
+      <div className="interest-rate-card">
+        <button type="button" className="interest-rate-card__cell interest-rate-card__cell--clickable">
+          <span className="interest-rate-card__value">
+            {availableBalance} {currency.code}
+            <span className="interest-rate-card__chevron" style={{ color: 'var(--color-content-secondary)', display: 'inline-flex', alignItems: 'center' }}><QuestionMarkCircle size={16} /></span>
+          </span>
+          <span className="np-text-body-default" style={{ color: 'var(--color-content-secondary)' }}>{t('currencyPage.availableLabel')}</span>
+        </button>
+        <div className="interest-rate-card__divider" />
+        <button type="button" className="interest-rate-card__cell interest-rate-card__cell--clickable">
+          <span className="interest-rate-card__value" style={totalReturnsColor ? { color: totalReturnsColor } : undefined}>
+            {totalReturns}
+            <span className="interest-rate-card__chevron"><ChevronRight size={16} /></span>
+          </span>
+          <span className="np-text-body-default" style={{ color: 'var(--color-content-secondary)' }}>{t('currencyPage.totalReturnsLabel')}</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="interest-rate-card">
@@ -147,7 +178,7 @@ function InterestRateCard({ currency, interestReturns }: { currency: CurrencyDat
   );
 }
 
-function OptionsContent({ currency, accountType = 'personal', interestReturns }: { currency: CurrencyData; accountType?: AccountType; interestReturns?: number }) {
+function OptionsContent({ currency, accountType = 'personal', interestReturns, isJar = false }: { currency: CurrencyData; accountType?: AccountType; interestReturns?: number; isJar?: boolean }) {
   const { t } = useLanguage();
   const showRateCard = (currency.hasStocks || currency.hasInterest) && accountType === 'personal';
 
@@ -157,18 +188,18 @@ function OptionsContent({ currency, accountType = 'personal', interestReturns }:
         <div className="currency-page__options-rate-card">
           <InterestRateCard currency={currency} interestReturns={interestReturns} />
           <p className="np-text-body-small currency-page__disclaimer" style={{ margin: '12px 0 20px', color: 'var(--color-content-secondary)', textAlign: 'center' }}>
-            {t('currencyPage.disclaimerInterest')}
+            {t(currency.hasStocks ? 'currencyPage.disclaimerStocks' : 'currencyPage.disclaimerInterest')}
           </p>
         </div>
       )}
-      <InterestListItem currency={currency} accountType={accountType} />
+      <InterestListItem currency={currency} accountType={accountType} isJar={isJar} />
       {!showRateCard && (
         <p className="np-text-body-small currency-page__disclaimer" style={{ margin: '12px 0 8px', color: 'var(--color-content-secondary)', textAlign: 'center' }}>
           {t('currencyPage.disclaimer')}
         </p>
       )}
 
-      <div style={{ marginTop: 32 }}>
+      <div style={{ marginTop: 16 }}>
         <ListItem
           spotlight="inactive"
           title={t('currencyPage.autoConversions')}
@@ -201,7 +232,7 @@ function OptionsContent({ currency, accountType = 'personal', interestReturns }:
   );
 }
 
-function Sidebar({ currency, accountType = 'personal', interestReturns }: { currency: CurrencyData; accountType?: AccountType; interestReturns?: number }) {
+function Sidebar({ currency, accountType = 'personal', interestReturns, isJar = false }: { currency: CurrencyData; accountType?: AccountType; interestReturns?: number; isJar?: boolean }) {
   const { t } = useLanguage();
   const showRateCard = (currency.hasStocks || currency.hasInterest) && accountType === 'personal';
 
@@ -211,18 +242,18 @@ function Sidebar({ currency, accountType = 'personal', interestReturns }: { curr
         <>
           <InterestRateCard currency={currency} interestReturns={interestReturns} />
           <p className="np-text-body-small currency-page__disclaimer" style={{ margin: '12px 0 20px', color: 'var(--color-content-secondary)', textAlign: 'center' }}>
-            {t('currencyPage.disclaimerInterest')}
+            {t(currency.hasStocks ? 'currencyPage.disclaimerStocks' : 'currencyPage.disclaimerInterest')}
           </p>
         </>
       )}
-      <InterestListItem currency={currency} accountType={accountType} />
+      <InterestListItem currency={currency} accountType={accountType} isJar={isJar} />
       {!showRateCard && (
         <p className="np-text-body-small currency-page__disclaimer" style={{ margin: '12px 0 8px', color: 'var(--color-content-secondary)', textAlign: 'center' }}>
           {t('currencyPage.disclaimer')}
         </p>
       )}
 
-      <div style={{ marginTop: 32 }}>
+      <div style={{ marginTop: 16 }}>
         <ListItem
           spotlight="inactive"
           title={t('currencyPage.autoConversions')}
@@ -255,16 +286,17 @@ function Sidebar({ currency, accountType = 'personal', interestReturns }: { curr
   );
 }
 
-export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal', jar, onAdd, onConvert, onSend, onRequest, onPaymentLink }: Props) {
+export function CurrencyPage({ code, onNavigateAccount, onAccountDetails, accountType = 'personal', jar, jarConfig, onAdd, onConvert, onSend, onRequest, onPaymentLink }: Props) {
   const { t } = useLanguage();
   const txLabels = useTxLabels();
   const { consumerName, businessName } = usePrototypeNames();
   const [activeTab, setActiveTab] = useState('transactions');
   const personalTransactions = useMemo(() => buildTransactions(consumerName, businessName, txLabels), [consumerName, businessName, txLabels]);
   const businessTransactions = useMemo(() => buildBusinessTransactions(consumerName, txLabels), [consumerName, txLabels]);
-  const isTaxes = jar === 'taxes';
-  const activeCurrencies = isTaxes ? taxesCurrencies : (accountType === 'business' ? businessCurrencies : currencies);
-  const activeTxList = isTaxes ? taxesTransactions : (accountType === 'business' ? businessTransactions : personalTransactions);
+  const isGroup = jar === 'taxes';
+  const isJar = !!jarConfig;
+  const activeCurrencies = isJar ? jarConfig.currencies : isGroup ? groupCurrencies : (accountType === 'business' ? businessCurrencies : currencies);
+  const activeTxList = isJar ? jarConfig.transactions : isGroup ? groupTransactions : (accountType === 'business' ? businessTransactions : personalTransactions);
   const currency = activeCurrencies.find((c) => c.code === code);
 
   const interestReturns = useMemo(() => {
@@ -280,13 +312,16 @@ export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal'
   }
 
   const showRateCard = (currency.hasStocks || currency.hasInterest) && accountType === 'personal';
+  const jarIcon = isJar ? (jarConfig.iconName === 'Suitcase' ? <Suitcase size={16} /> : <Savings size={16} />) : undefined;
 
-  const menuItems = [
-    { label: t('common.statementsAndReports') },
-    { label: t('currencyPage.directDebits') },
-    { label: t('currencyPage.getProof') },
-    { label: t('currencyPage.removeCurrency') },
-  ];
+  const menuItems = isJar
+    ? [{ label: t('common.statementsAndReports') }, { label: t('currencyPage.removeCurrency') }]
+    : [
+        { label: t('common.statementsAndReports') },
+        { label: t('currencyPage.directDebits') },
+        { label: t('currencyPage.getProof') },
+        { label: t('currencyPage.removeCurrency') },
+      ];
 
   return (
     <div className="currency-page">
@@ -294,20 +329,22 @@ export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal'
         type="currency"
         currencyCode={currency.code}
         label={currency.code}
-        balance={currency.formattedBalance}
-        availableBalance={currency.hasStocks ? `${(currency.balance * 0.95).toFixed(2)} ${currency.code}` : undefined}
-        hasStocks={currency.hasStocks}
-        accountDetails={currency.accountDetails}
+        balance={formatBalance(currency)}
+        accountDetails={(isJar || isGroup) ? undefined : currency.accountDetails}
         menuItems={menuItems}
+        onAccountDetailsClick={(isJar || isGroup) ? undefined : onAccountDetails}
         onBreadcrumbClick={onNavigateAccount}
         accountType={accountType}
-        hideGetPaid={false}
+        jarColor={isJar ? jarConfig.color : isGroup ? '#FFEB69' : undefined}
+        jarName={isJar ? t(jarConfig.nameKey as any) : isGroup ? t('home.taxes') : undefined}
+        jarIcon={jarIcon ? jarIcon : isGroup ? <Money size={16} /> : undefined}
+        hideGetPaid={isJar}
         sendSecondary={currency.balance === 0}
         onAdd={onAdd}
         onConvert={onConvert}
         onSend={onSend}
-        onRequest={onRequest}
-        onPaymentLink={onPaymentLink}
+        onRequest={isJar ? undefined : onRequest}
+        onPaymentLink={isJar ? undefined : onPaymentLink}
       />
 
       {/* Desktop: two-column layout (60/40), no tabs */}
@@ -315,7 +352,7 @@ export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal'
         <div className="currency-page__desktop-main">
           <TransactionsSection currency={currency} txList={activeTxList} />
         </div>
-        <Sidebar currency={currency} accountType={accountType} interestReturns={interestReturns} />
+        <Sidebar currency={currency} accountType={accountType} interestReturns={interestReturns} isJar={isJar} />
       </div>
 
       {/* Mobile/Tablet: segmented control tabs */}
@@ -324,7 +361,7 @@ export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal'
           <div className="currency-page__mobile-rate-card">
             <InterestRateCard currency={currency} interestReturns={interestReturns} />
             <p className="np-text-body-small currency-page__disclaimer" style={{ margin: '12px 0 0', color: 'var(--color-content-secondary)', textAlign: 'center' }}>
-              {t('currencyPage.disclaimerInterest')}
+              {t(currency.hasStocks ? 'currencyPage.disclaimerStocks' : 'currencyPage.disclaimerInterest')}
             </p>
           </div>
         )}
@@ -342,7 +379,7 @@ export function CurrencyPage({ code, onNavigateAccount, accountType = 'personal'
         </div>
 
         {activeTab === 'transactions' && <TransactionsSection currency={currency} isMobile txList={activeTxList} />}
-        {activeTab === 'options' && <OptionsContent currency={currency} accountType={accountType} interestReturns={interestReturns} />}
+        {activeTab === 'options' && <OptionsContent currency={currency} accountType={accountType} interestReturns={interestReturns} isJar={isJar} />}
       </div>
     </div>
   );

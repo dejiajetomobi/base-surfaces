@@ -6,7 +6,6 @@ const en = {
   'nav.payments': 'Payments',
   'nav.recipients': 'Recipients',
   'nav.insights': 'Insights',
-  'nav.team': 'Team',
   'nav.scheduled': 'Scheduled',
   'nav.directDebits': 'Direct Debits',
   'nav.recurringCardPayments': 'Recurring card payments',

@@ -34,13 +34,26 @@ Replaces the entire page layout when active.
 - **Personal**: uses `imgSrc` (photo).
 - **Business**: `{ backgroundColor: '#163300', color: '#9fe870' }` with initials.
 
-## Account Avatar Styles
+## Account Avatar Styles (`AccountStyle`)
 
-Used inside currency selectors and labels to represent the account:
+Currency selectors use an `AccountStyle` prop to render the correct icon and color for any account type. Defined in `App.tsx` and threaded through `ActiveFlow` → flow component props.
 
-- **Personal**: `{ backgroundColor: 'var(--color-interactive-accent)', color: 'var(--color-interactive-control)' }` with Wise logo icon.
-- **Business**: `{ backgroundColor: '#163300', color: '#9fe870' }` with Wise logo icon.
-- **Taxes jar**: `{ backgroundColor: '#FFEB69', color: '#3a341c' }` with `Money` icon.
+```ts
+type AccountStyle = { color: string; textColor: string; iconName: string };
+```
+
+**Style constants** (defined in `AppInner`):
+
+| Account | `color` | `textColor` | `iconName` |
+|---------|---------|-------------|------------|
+| Personal | `var(--color-interactive-accent)` | `var(--color-interactive-control)` | `Wise` |
+| Business | `#163300` | `#9fe870` | `Wise` |
+| Taxes (Group) | `#FFEB69` | `#3a341c` | `Money` |
+| Jar | jar's own color | `#121511` | jar's own icon (e.g. `Savings`, `Suitcase`) |
+
+Flows resolve the icon via `resolveIcon(iconName)` which maps `'Savings'` → `<Savings>`, `'Suitcase'` → `<Suitcase>`, `'Money'` → `<Money>`, default → `<WiseLogoIcon>`.
+
+**ConvertFlow** also accepts `toAccountStyle` for cross-account conversions (e.g. jar → current account).
 
 ## Body Column
 
@@ -97,7 +110,8 @@ Flows receive:
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
-  // ...flow-specific props (currencies, labels, jar)
+  accountStyle: AccountStyle;  // drives currency selector icon + color
+  // ...flow-specific props (currencies, labels)
 }
 ```
 

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Logo, Button, AvatarView, ExpressiveMoneyInput, Chips } from '@transferwise/components';
+import { FlowNavigation, Logo, Button, AvatarView, ExpressiveMoneyInput, Chips } from '@transferwise/components';
 import { InfoCircle, ChevronDown, Money } from '@transferwise/icons';
-import { Flag } from '../components/Flag';
+import { Flag } from '@wise/art';
 import { ButtonCue } from '../components/ButtonCue';
-import { FlowNavigationWithSpecs } from '../components/FlowNavigationWithSpecs';
 import { useLanguage } from '../context/Language';
 import type { AccountType } from '../App';
 
@@ -25,14 +24,13 @@ type Props = {
   accountType: AccountType;
   avatarUrl: string;
   initials: string;
-  banner?: React.ReactNode;
 };
 
-export function PaymentLinkFlow({ defaultCurrency, accountLabel, jar, onClose, accountType, avatarUrl, initials, banner }: Props) {
+export function PaymentLinkFlow({ defaultCurrency, accountLabel, jar, onClose, accountType, avatarUrl, initials }: Props) {
   const { t } = useLanguage();
 
   const isBusiness = accountType === 'business';
-  const isTaxes = jar === 'taxes';
+  const isGroup = jar === 'taxes';
 
   const [currency] = useState(defaultCurrency);
   const [amount, setAmount] = useState<number | null>(null);
@@ -52,7 +50,7 @@ export function PaymentLinkFlow({ defaultCurrency, accountLabel, jar, onClose, a
     </AvatarView>
   );
 
-  const accountAvatarStyle = isTaxes
+  const accountAvatarStyle = isGroup
     ? { backgroundColor: '#FFEB69', color: '#3a341c' }
     : isBusiness
       ? { backgroundColor: '#163300', color: '#9fe870' }
@@ -116,8 +114,7 @@ export function PaymentLinkFlow({ defaultCurrency, accountLabel, jar, onClose, a
 
   return (
     <div className="payment-link-flow">
-      {banner}
-      <FlowNavigationWithSpecs
+      <FlowNavigation
         activeStep={0}
         steps={[]}
         onClose={onClose}
@@ -138,7 +135,7 @@ export function PaymentLinkFlow({ defaultCurrency, accountLabel, jar, onClose, a
                   <Button v2 size="md" priority="secondary-neutral" className="wds-currency-selector"
                     addonStart={{
                       type: 'avatar',
-                      value: [{ style: accountAvatarStyle, asset: isTaxes ? <Money size={16} /> : <WiseLogoIcon /> }, { asset: <Flag code={currency} loading="eager" /> }],
+                      value: [{ style: accountAvatarStyle, asset: isGroup ? <Money size={16} /> : <WiseLogoIcon /> }, { asset: <Flag code={currency} loading="eager" /> }],
                     }}
                     addonEnd={{ type: 'icon', value: <ChevronDown size={16} /> }}
                   >
